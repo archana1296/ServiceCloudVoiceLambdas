@@ -2,9 +2,7 @@ const jwt = require("jsonwebtoken");
 const SSM = require("aws-sdk/clients/ssm");
 const uuid = require("uuid/v1");
 const SCVLoggingUtil = require("./SCVLoggingUtil");
-const config = require("./config");
 const signalConfig = require("./signalConfig");
-const lambdaExtension = require("./lambdaExtension");
 
 function buildSendMessagePayload(transcript, approximateArrivalTimestamp) {
   const payload = {};
@@ -49,35 +47,11 @@ function buildSendRealtimeConversationEventsPayload(categories) {
   return payload;
 }
 
-async function getSSMParameterValue(paramName, withDecryption) {
-  return new Promise((resolve) => {
-    var useLambdaExtensions =
-      String(config.useSSMLambdaExtension).toLowerCase() === "true";
-    if (!useLambdaExtensions) {
-      const ssm = new SSM();
-      const query = {
-        Names: [paramName],
-        WithDecryption: withDecryption,
-      };
-
-      ssm.getParameters(query, (err, data) => {
-        let paramValue = null;
-
-        if (!err && data && data.Parameters && data.Parameters.length) {
-          paramValue = data.Parameters[0].Value;
-        }
-        resolve(paramValue);
-      });
-    } else {
-      resolve(lambdaExtension.readSSMParameter(paramName));
-    }
-  });
-}
-
 /**
  * Generate a JWT based on the specified parameters.
  *
  * @param {object} params
+ * @param secretData
  * @param {string} params.privateKeyParamName - The name of the parameter for storing the certificate prviate key in AWS Paramter Store.
  * @param {string} params.orgId - The ID of the customer's Salesforce org.
  * @param {string} params.callCenterApiName - The API name of the Salesforce CallCenter which maps to the context Amazon Connect contact center instance.
@@ -86,8 +60,9 @@ async function getSSMParameterValue(paramName, withDecryption) {
  * @return {string} - JWT token string
  */
 async function generateJWT(params) {
-  const { privateKeyParamName, orgId, callCenterApiName, expiresIn } = params;
-  const privateKey = await getSSMParameterValue(privateKeyParamName, true);
+  // const { privateKeyParamName, orgId, callCenterApiName, expiresIn } = params;
+  const { orgId, callCenterApiName, expiresIn, privateKey } = params;
+  // const privateKey = await getSSMParameterValue(privateKeyParamName, true);
 
   const signOptions = {
     issuer: orgId,
@@ -128,11 +103,11 @@ function parseData(data) {
   return JSON.parse(payload);
 }
 
+
 module.exports = {
   buildSendMessagePayload,
   buildSendRealtimeConversationEventsPayload,
   generateJWT,
-  getSSMParameterValue,
   logEventReceived,
-  parseData,
+  parseData
 };

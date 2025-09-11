@@ -36,6 +36,17 @@ Parameters:
   SalesforceRelease:
     Type: String
     Description: Salesforce Major Release Version
+  Multiorg:
+    Default: FALSE
+    Type: String
+    Description: Flag to determine if this is a multiorg scenario
+    AllowedValues:
+      - TRUE
+      - FALSE
+
+Conditions:
+  Multiorg:
+    !Equals [ !Ref Multiorg, 'TRUE' ]
 
 Outputs:
   VoiceMailAudioProcessingFunction:
@@ -54,7 +65,7 @@ Resources:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
       CompatibleRuntimes:
-        - nodejs20.x
+        - nodejs22.x
       Content:
         S3Bucket: !Sub '${S3BucketForScvResources}-${AWS::Region}'
         S3Key: !Sub '${SalesforceRelease}/voiceMailAudioProcessingFunctionLayer${Version}'
@@ -64,7 +75,7 @@ Resources:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
       CompatibleRuntimes:
-        - nodejs20.x
+        - nodejs22.x
       Content:
         S3Bucket: !Sub '${S3BucketForScvResources}-${AWS::Region}'
         S3Key: !Sub '${SalesforceRelease}/voiceMailTranscribeFunctionLayer${Version}'
@@ -75,10 +86,13 @@ Resources:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
       CompatibleRuntimes:
-        - nodejs20.x
+        - nodejs22.x
       Content:
         S3Bucket: !Sub '${S3BucketForScvResources}-${AWS::Region}'
-        S3Key: !Sub '${SalesforceRelease}/voiceMailPackagingFunctionLayer${Version}'
+        S3Key: !If
+          - Multiorg
+          - !Sub '${SalesforceRelease}/multiorgVoiceMailPackagingFunctionLayer${Version}'
+          - !Sub '${SalesforceRelease}/voiceMailPackagingFunctionLayer${Version}'
       Description: voiceMailAudioProcessing node modules
       LayerName: VoiceMailPackagingFunctionLayer
 
@@ -91,14 +105,15 @@ Resources:
         Key: !Sub "${SalesforceRelease}/voiceMailAudioProcessing${Version}"
       Environment:
         Variables:
-          s3_recordings_bucket: !Ref S3BucketForTenantResources
           LOG_LEVEL: "info"
+          S3_RECORDINGS_BUCKET: !Ref S3BucketForTenantResources
+          SECRET_NAME: !Sub "${CallCenterApiName}-salesforce-secret"
       Handler: handler.handler
       AutoPublishAlias: active
       VersionDescription: !Sub "Service Cloud Voice Lambda Version ${Version}"
       Role: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${VoiceMailAudioProcessingRole}"
       Timeout: 30
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       FunctionName: !Sub "${CallCenterApiName}-VoiceMailAudioProcessingFunction"
       Layers:
         - Ref: VoiceMailAudioProcessingFunctionLayer
@@ -112,8 +127,8 @@ Resources:
         Key: !Sub "${SalesforceRelease}/voiceMailTranscribe${Version}"
       Environment:
         Variables:
-          TRANSCRIBE_REGION: "us-west-2"
           LOG_LEVEL: "info"
+          SECRET_NAME: !Sub "${CallCenterApiName}-salesforce-secret"
       Handler: handler.handler
       Events:
         S3EventBridgeRule:
@@ -134,7 +149,7 @@ Resources:
       VersionDescription: !Sub "Service Cloud Voice Lambda Version ${Version}"
       Role: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${VoiceMailTranscribeRole}"
       Timeout: 5
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       FunctionName: !Sub "${CallCenterApiName}-VoiceMailTranscribeFunction"
       Layers:
         - Ref: VoiceMailTranscribeFunctionLayer
@@ -144,12 +159,23 @@ Resources:
     Properties:
       CodeUri:
         Bucket: !Sub "${S3BucketForScvResources}-${AWS::Region}"
-        Key: !Sub "${SalesforceRelease}/voiceMailPackaging${Version}"
+        Key: !If
+          - Multiorg
+          - !Sub "${SalesforceRelease}/multiorgVoiceMailPackaging${Version}"
+          - !Sub "${SalesforceRelease}/voiceMailPackaging${Version}"
       Environment:
         Variables:
-          invoke_telephony_integration_api_arn: !Ref InvokeTelephonyIntegrationApiARN
           LOG_LEVEL: "info"
-          delay_before_routing_vm_sec: 60
+          INVOKE_TELEPHONY_INTEGRATION_API_ARN: !Ref InvokeTelephonyIntegrationApiARN
+          DELAY_BEFORE_ROUTING_VM_SEC: 60
+          SECRET_NAME: !If
+            - Multiorg
+            - !Ref "AWS::NoValue"
+            - !Sub "${CallCenterApiName}-salesforce-secret"
+          SECRET_CACHE_S3: !If
+            - Multiorg
+            - !Sub "${S3BucketForTenantResources}/secret_cache"
+            - !Ref "AWS::NoValue"
       Handler: handler.handler
       Events:
         S3EventBridgeRule:
@@ -172,7 +198,7 @@ Resources:
       VersionDescription: !Sub "Service Cloud Voice Lambda Version ${Version}"
       Role: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${VoiceMailPackagingRole}"
       Timeout: 400
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       FunctionName: !Sub "${CallCenterApiName}-VoiceMailPackagingFunction"
       Layers:
         - Ref: VoiceMailPackagingFunctionLayer

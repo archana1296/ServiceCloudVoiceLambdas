@@ -1,13 +1,10 @@
 const utils = require('../utils.js');
 
-jest.mock('aws-sdk/clients/ssm');
-const SSM = require('aws-sdk/clients/ssm');
-
 jest.mock('uuid/v1');
 const uuid = require('uuid');
 const selfsigned = require("selfsigned");
 
-afterEach(() => {    
+afterEach(() => {
   jest.clearAllMocks();
 });
 
@@ -34,25 +31,18 @@ function generatePrivatePublicKeyPair() {
 
 describe('generateJWTWithActualKey', () => {
     let originalDateGetTime;
-    let originalSSMGetParameters;
     const pems = generatePrivatePublicKeyPair();
     let rsaKey = pems.private;
 
     beforeEach(() => {
         originalDateGetTime = Date.prototype.getTime;
-        originalSSMGetParameters = SSM.prototype.getParameters;
     });
 
     it('should invoke jwt.sign() with proper arguments', async () => {
-        SSM.prototype.getParameters = jest.fn((query, callback) => {
-            callback.call(null, undefined, {
-                Parameters: [{ Value: rsaKey }]
-            });
-        });
         jest.spyOn(uuid, 'v1').mockReturnValue('123456789');
 
         const jwtValue = await utils.generateJWT({
-            privateKeyParamName: 'test_param_name',
+            privateKey: rsaKey,
             orgId: 'test_org_id',
             callCenterApiName: 'test_call_center_api_name',
             expiresIn: '10m'
@@ -64,6 +54,5 @@ describe('generateJWTWithActualKey', () => {
 
     afterEach(() => {
         Date.prototype.getTime = originalDateGetTime;
-        SSM.prototype.getParameters = originalSSMGetParameters;
     });
-}); 
+});

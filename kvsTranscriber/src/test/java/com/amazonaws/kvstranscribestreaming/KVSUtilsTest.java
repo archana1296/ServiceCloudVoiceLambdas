@@ -28,11 +28,11 @@ public class KVSUtilsTest {
 
     @Mock
     AmazonKinesisVideoMedia amazonKinesisVideoMedia;
-    
+
     @Test
     void getInputStreamFromKVSTest() {
         String streamName = "test-stream";
-        Regions regions = Regions.fromName("us-east-1");
+        Regions regions = Regions.valueOf("US_EAST_1");
         String startFragmentNum = "1";
         AWSCredentialsProvider awsCredentialsProvider = DefaultAWSCredentialsProviderChain.getInstance();
         String startSelectorType = "FRAGMENT_NUMBER";
@@ -40,7 +40,7 @@ public class KVSUtilsTest {
         MockedStatic<AmazonKinesisVideoClientBuilder> amazonKinesisVideoClientBuilderMockedStatic = Mockito.mockStatic(AmazonKinesisVideoClientBuilder.class, RETURNS_DEEP_STUBS);
         AmazonKinesisVideo amazonKinesisVideo = mock(AmazonKinesisVideo.class);
         amazonKinesisVideoClientBuilderMockedStatic.when(() -> AmazonKinesisVideoClientBuilder.standard().build()).thenReturn(amazonKinesisVideo);
-        
+
         getDataEndpointResult = mock(GetDataEndpointResult.class);
         doReturn(getDataEndpointResult).when(amazonKinesisVideo).getDataEndpoint(any());
         doReturn("sample-endpoint").when(getDataEndpointResult).getDataEndpoint();
@@ -51,7 +51,7 @@ public class KVSUtilsTest {
         AmazonKinesisVideoMediaClientBuilder amazonKinesisVideoMediaClientBuilder = mock(AmazonKinesisVideoMediaClientBuilder.class);
         amazonKinesisVideoMediaClientBuilderMockedStatic.when(() -> AmazonKinesisVideoMediaClientBuilder.standard().withEndpointConfiguration(any()).withCredentials(any())).thenReturn(amazonKinesisVideoMediaClientBuilder);
         when(amazonKinesisVideoMediaClientBuilder.build()).thenReturn(amazonKinesisVideoMedia);
-        
+
         SdkHttpMetadata sdkHttpMetadata = mock(SdkHttpMetadata.class);
         ResponseMetadata responseMetadata = mock(ResponseMetadata.class);
         GetMediaResult getMediaResult = new GetMediaResult();
@@ -72,7 +72,7 @@ public class KVSUtilsTest {
                         .withAfterFragmentNumber(startFragmentNum)));
 
         InputStream kvsInputStream = KVSUtils.getInputStreamFromKVS(streamName, regions, startFragmentNum, awsCredentialsProvider, startSelectorType);
-        
+
         assertTrue(kvsInputStream.toString().contains("com.amazonaws.kvstranscribestreaming.KVSUtilsTest"));
     }
 }

@@ -6,11 +6,11 @@ const transcribe = new aws.TranscribeService();
 const s3 = new aws.S3();
 
 const INVOKE_TELEPHONY_INTEGRATION_API_ARN =
-  process.env.invoke_telephony_integration_api_arn;
+  process.env.INVOKE_TELEPHONY_INTEGRATION_API_ARN;
 const RECORDINGS_PREFIX = "voicemail_recordings/";
 const TRANSCRIPTS_PREFIX = "voicemail_transcripts/";
 const MAX_ROUTING_ATTEMPTS = 4;
-const DELAY_BEFORE_ROUTING_SEC = process.env.delay_before_routing_vm_sec || 60;
+const DELAY_BEFORE_ROUTING_SEC = process.env.DELAY_BEFORE_ROUTING_VM_SEC || 60;
 
 // This Lambda requires env variables invoke_telephony_integration_api_arn and a triger bridge for S3 inserts
 async function sendMessage(contactId, transcript, initTimestamp, endTimestamp) {

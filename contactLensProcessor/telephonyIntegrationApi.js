@@ -2,22 +2,29 @@ const SCVLoggingUtil = require("./SCVLoggingUtil");
 const config = require("./config");
 const utils = require("./utils");
 const axiosWrapper = require("./axiosWrapper");
+const secretUtils = require("./secretUtils");
 
-const generateJWTParams = {
-  privateKeyParamName: config.privateKeyParamName,
-  orgId: config.orgId,
-  callCenterApiName: config.callCenterApiName,
-  expiresIn: config.tokenValidFor,
-};
 const vendorFQN = "amazon-connect";
+
+function generateJWTParams(secretData) {
+  return {
+    orgId: secretData.orgId,
+    callCenterApiName: secretData.callCenterApiName,
+    expiresIn: secretData.tokenValidFor,
+    privateKey: secretData.privateKey,
+  };
+}
 
 async function sendMessagesInBulk(payload) {
   SCVLoggingUtil.info({
     message: "Creating sendMessagesInBulk request",
     context: { payload: payload },
   });
-  const jwt = await utils.generateJWT(generateJWTParams);
-  await axiosWrapper.scrtEndpoint
+  const secretData = await secretUtils.getSecretConfigs(payload.secretName)
+  const jwt = await utils.generateJWT(generateJWTParams(secretData));
+  // we have read the secretName. So removing this from payload.
+  delete payload.secretName
+  await axiosWrapper.getScrtEndpoint(secretData)
     .post(`/voiceCalls/messages`, payload, {
       headers: {
         Authorization: `Bearer ${jwt}`,
@@ -49,14 +56,15 @@ async function sendMessagesInBulk(payload) {
   return { data: { result: "Success" } };
 }
 
-async function sendRealtimeConversationEvents(contactId, payload) {
+async function sendRealtimeConversationEvents(contactId, payload, secretName) {
   SCVLoggingUtil.info({
     message: "Creating sendRealtimeConversationEvents request",
     context: { contactId: contactId },
   });
-  const jwt = await utils.generateJWT(generateJWTParams);
+  const secretData = await secretUtils.getSecretConfigs(secretName)
+  const jwt = await utils.generateJWT(generateJWTParams(secretData));
 
-  await axiosWrapper.scrtEndpoint
+  await axiosWrapper.getScrtEndpoint(secretData)
     .post(`/voiceCalls/${contactId}/realtimeConversationEvents`, payload, {
       headers: {
         Authorization: `Bearer ${jwt}`,

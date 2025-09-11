@@ -1,4 +1,6 @@
 const handler = require("../handler");
+const transcriptUploader = require('../transcriptUploader');
+const fetchUploadIdsStatus = require('../fetchUploadIdsStatus');
 
 afterEach(() => {
   jest.clearAllMocks();
@@ -29,5 +31,45 @@ describe("ContactDataSync Lambda handler", () => {
       }),
     };
     expect(await handler.handler(event)).toMatchObject(expectedResponse);
+  });
+
+  it('handles uploadTranscript operation', async () => {
+    jest.spyOn(transcriptUploader, 'processTranscript').mockResolvedValue('result');
+    const event = { operation: 'uploadTranscript', payload: [{ contactId: 'cid', relatedRecords: ['rec'] }], secretName: 'secret', accessTokenSecretName: 'access' };
+    const context = { invokedFunctionArn: 'arn:aws:lambda:region:acct:function:name' };
+    const res = await handler.handler(event, context);
+    expect(res).toBe('result');
+  });
+
+  it('handles fetchUploadIdsStatus operation', async () => {
+    jest.spyOn(fetchUploadIdsStatus, 'processFetchUploadIdsStatus').mockResolvedValue('result');
+    const event = { operation: 'fetchUploadIdsStatus', uploadIds: ['id'], secretName: 'secret', accessTokenSecretName: 'access' };
+    const context = {};
+    const res = await handler.handler(event, context);
+    expect(res).toBe('result');
+  });
+
+  it('returns error for unsupported operation', async () => {
+    const event = { operation: 'badOp' };
+    const context = {};
+    const res = await handler.handler(event, context);
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/Unsupported operation/);
+  });
+
+  it('returns error for invalid uploadTranscript payload', async () => {
+    const event = { operation: 'uploadTranscript', payload: [] };
+    const context = {};
+    const res = await handler.handler(event, context);
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/Malformed request/);
+  });
+
+  it('returns error for invalid fetchUploadIdsStatus payload', async () => {
+    const event = { operation: 'fetchUploadIdsStatus', uploadIds: [] };
+    const context = {};
+    const res = await handler.handler(event, context);
+    expect(res.statusCode).toBe(400);
+    expect(JSON.parse(res.body).error).toMatch(/Malformed request/);
   });
 });

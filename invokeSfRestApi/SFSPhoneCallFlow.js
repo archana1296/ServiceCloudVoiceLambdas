@@ -33,7 +33,7 @@ class SFSPhoneCallFlow {
     });
   }
 
-  static async getInfo(cusPhoneNumber = "") {
+  static async getInfo(cusPhoneNumber = "", secretName, accessTokenSecretName) {
     try {
       let qry;
       let resx;
@@ -54,7 +54,7 @@ class SFSPhoneCallFlow {
 
       let ApptAssistantStatus = "";
       qry = "SELECT ApptAssistantStatus FROM FieldServiceOrgSettings";
-      resx = await queryEngine.invokeQuery(qry, { methodName: "queryRecord" });
+      resx = await queryEngine.invokeQuery(qry, { methodName: "queryRecord" }, secretName, accessTokenSecretName);
 
       if (!SFSPhoneCallFlow.isEmptyObject(resx)) {
         ApptAssistantStatus = resx.ApptAssistantStatus;
@@ -72,15 +72,15 @@ class SFSPhoneCallFlow {
 
       qry = `SELECT ServiceResource.RelatedRecord.Phone
               FROM AssignedResource
-              WHERE (LocationStatus in ('EnRoute', 'LastMile')) 
-          	    AND (ServiceAppointment.Status='${ApptAssistantStatus}') 
+              WHERE (LocationStatus in ('EnRoute', 'LastMile'))
+          	    AND (ServiceAppointment.Status='${ApptAssistantStatus}')
           	    AND (ServiceAppointment.Contact.Phone='${cusPhoneNumber}')
               ORDER BY AssignedResourceNumber DESC
               LIMIT 1`;
 
       SFSPhoneCallFlow.logx(qry);
 
-      resx = await queryEngine.invokeQuery(qry, { methodName: "queryRecord" });
+      resx = await queryEngine.invokeQuery(qry, { methodName: "queryRecord" }, secretName, accessTokenSecretName);
 
       if (
         SFSPhoneCallFlow.isEmptyObject(resx) ||
@@ -120,7 +120,7 @@ class SFSPhoneCallFlow {
     }
   }
 
-  static async classEntryPoint(event) {
+  static async classEntryPoint(event, secretName, accessTokenSecretName) {
     try {
       let cusPhoneNumber = "anonymous";
       if (
@@ -132,7 +132,7 @@ class SFSPhoneCallFlow {
       ) {
         cusPhoneNumber = event.Details.ContactData.CustomerEndpoint.Address;
       }
-      const res = await SFSPhoneCallFlow.getInfo(cusPhoneNumber);
+      const res = await SFSPhoneCallFlow.getInfo(cusPhoneNumber, secretName, accessTokenSecretName);
       return res;
     } catch (ex) {
       SFSPhoneCallFlow.logx(`entryPoint() exception: ${ex.message}`);
@@ -146,8 +146,8 @@ class SFSPhoneCallFlow {
   }
 }
 
-async function entryPoint(event) {
-  const ret = await SFSPhoneCallFlow.classEntryPoint(event);
+async function entryPoint(event, secretName, accessTokenSecretName) {
+  const ret = await SFSPhoneCallFlow.classEntryPoint(event, secretName, accessTokenSecretName);
   return ret;
 }
 

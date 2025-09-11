@@ -3,6 +3,9 @@ const { fetchOutboundPhoneNumber } = require("./../fetchOutboundPhoneNumber");
 jest.mock("./../queryEngine");
 const queryEngine = require("./../queryEngine");
 
+jest.mock("../secretUtils");
+const secretUtils = require("../secretUtils.js");
+
 describe("fetchOutboundPhoneNumber", () => {
   it("failure in fetching number due to missing agent arn", async () => {
     const event = {
@@ -10,6 +13,17 @@ describe("fetchOutboundPhoneNumber", () => {
         Parameters: {},
       },
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     const { outboundPhoneNumber, success } = await fetchOutboundPhoneNumber(
       event
     );
@@ -26,6 +40,17 @@ describe("fetchOutboundPhoneNumber", () => {
         },
       },
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
 
     queryEngine.invokeQuery.mockImplementation(() => Promise.reject({}));
 

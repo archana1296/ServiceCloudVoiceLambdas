@@ -3,21 +3,18 @@ const config = require("./config");
 const utils = require("./utils");
 const axiosWrapper = require("./axiosWrapper");
 
-const generateJWTParams = {
-  privateKeyParamName: config.privateKeyParamName,
-  orgId: config.orgId,
-  callCenterApiName: config.callCenterApiName,
-  expiresIn: config.tokenValidFor,
-};
 const vendorFQN = "amazon-connect";
 
 async function persistSignals(contactId, payload) {
-  const jwt = await utils.generateJWT(generateJWTParams);
+  const jwt = await utils.generateJWT();
+  const scrtEndpoint = await axiosWrapper.getScrtEndpoint();
+
   SCVLoggingUtil.info({
     message: "Persist Signal Request",
     context: { contactId: contactId, payload: payload },
   });
-  await axiosWrapper.scrtEndpoint
+
+  await scrtEndpoint
     .post(`/voiceCalls/${contactId}/postConversationEvents`, payload, {
       headers: {
         Authorization: `Bearer ${jwt}`,

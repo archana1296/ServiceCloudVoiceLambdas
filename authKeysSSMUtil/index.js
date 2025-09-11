@@ -1,8 +1,14 @@
 const selfsigned = require("selfsigned");
-const awsParamStore = require("aws-param-store");
+const { readSecret, writeSecret } = require("./secretUtils");
+const config = require("./config");
 
-function putSSMParameter(name, value) {
-  awsParamStore.putParameterSync(name, value, "SecureString");
+async function updateSecretParameter(ssmParamName, value) {
+  if (!config.secretName) {
+    throw new Error("SECRET_NAME configuration is not set");
+  }
+  let secretData = await readSecret(config.secretName);
+  secretData[ssmParamName] = value;
+  await writeSecret(config.secretName, secretData);
 }
 
 function generatePrivatePublicKeyPair(requestDetails) {
@@ -39,7 +45,7 @@ exports.handler = async (event) => {
   switch (requestType) {
     case "GeneratePrivatePublicKeyPair": {
       const pems = generatePrivatePublicKeyPair(requestDetails);
-      putSSMParameter(ssmParamName, pems.private);
+      await updateSecretParameter(ssmParamName, pems.private);
 
       ret = {
         Success: true,
@@ -49,11 +55,11 @@ exports.handler = async (event) => {
     }
     case "CreateSSMParameter": {
       const ssmParamValue = requestDetails.SSMParamValue;
-      putSSMParameter(ssmParamName, ssmParamValue);
+      await updateSecretParameter(ssmParamName, ssmParamValue);
 
       ret = {
         Success: true,
-        Message: `The SSM parameter ${ssmParamName} is put successfully.`,
+        Message: `The secret parameter ${ssmParamName} is stored successfully.`,
       };
       break;
     }

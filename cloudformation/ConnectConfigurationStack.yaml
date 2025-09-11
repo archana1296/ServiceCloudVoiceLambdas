@@ -57,10 +57,16 @@ Parameters:
       - SOURCE
       - REPLICA
       - MULTIORG
+  LambdaPrefix:
+    Default: ''
+    Type: String
+    Description: Prefix for Lambda functions
 
 Conditions:
   UseSourceCondition:
     !Equals [ !Ref InstanceType, SOURCE]
+  LambdaPrefixIsNull:
+    !Equals [ !Ref LambdaPrefix, '' ]
 
 Resources:
   RoutingPredefinedAttribute:
@@ -69,8 +75,8 @@ Resources:
     Properties:
       InstanceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
       Name: "Routing"
-      Values: 
-        StringList: 
+      Values:
+        StringList:
           - "True"
   MyDomainApprovedOriginDisAssociation:
     Type: Custom::MyDomainApprovedOriginDisAssociation
@@ -79,7 +85,7 @@ Resources:
       ResourceType: "DISASSOCIATE_RESOURCES"
       ResourceValue: !Sub "${MyDomainUrl}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the approved origin association 
+      Description: Removing the approved origin association
   LightningDomainApprovedOriginDisAssociation:
     Type: Custom::LightningDomainApprovedOriginDisAssociation
     DependsOn: MyDomainApprovedOriginAssociation
@@ -88,7 +94,7 @@ Resources:
       ResourceType: "DISASSOCIATE_RESOURCES"
       ResourceValue: !Sub "${LightningDomainUrl}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the approved origin association 
+      Description: Removing the approved origin association
   MyDomainApprovedOriginAssociation:
     Type: AWS::Connect::ApprovedOrigin
     DependsOn: MyDomainApprovedOriginDisAssociation
@@ -108,7 +114,7 @@ Resources:
       ResourceType: "DISASSOCIATE_LAMBDA"
       ResourceValue: !Sub "${InvokeTelephonyApiLambdaArn}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the lambda association 
+      Description: Removing the lambda association
   KvsConsumerTriggerDisAssociationResource:
     Type: Custom::KvsConsumerTriggerDisAssociationResource
     DependsOn: InvokeTelephonyLambdaAssociationResource
@@ -117,7 +123,7 @@ Resources:
       ResourceType: "DISASSOCIATE_LAMBDA"
       ResourceValue: !Sub "${KvsConsumerTriggerLambdaArn}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the lambda association 
+      Description: Removing the lambda association
   InvokeSfRestApiDisAssociationResource:
     Type: Custom::InvokeSfRestApiDisAssociationResource
     DependsOn: KvsConsumerTriggerAssociationResource
@@ -126,7 +132,7 @@ Resources:
       ResourceType: "DISASSOCIATE_LAMBDA"
       ResourceValue: !Sub "${InvokeSfRestApiLambdaArn}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the lambda association 
+      Description: Removing the lambda association
   ContactLensConsumerDisAssociationResource:
     Type: Custom::ContactLensConsumerDisAssociationResource
     DependsOn: InvokeSfRestApiAssociationResource
@@ -135,7 +141,7 @@ Resources:
       ResourceType: "DISASSOCIATE_LAMBDA"
       ResourceValue: !Sub "${ContactLensConsumerLambdaArn}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the lambda association 
+      Description: Removing the lambda association
   CallRecordingStorage:
     Type: Custom::CallRecordingStorage
     Properties:
@@ -213,7 +219,7 @@ Resources:
       InstanceId: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
       IntegrationArn: !Sub "${ContactLensConsumerLambdaArn}:active"
       IntegrationType: "LAMBDA_FUNCTION"
-    
+
   MultiPartyConferenceConfig:
     Type: Custom::MultiPartyConferenceConfig
     Properties:
@@ -438,7 +444,7 @@ Resources:
                 cfnresponse.send(event, context, SUCCESS, responseData, reason)
               else:
                 cfnresponse.send(event, context, FAILED, responseData, reason)
-      FunctionName: !Sub "${CallCenterApiName}-ConnectConfigurationFunction"
+      FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-ConnectConfigurationFunction", !Sub "${LambdaPrefix}-ConnectConfigurationFunction"]
       Description: It associate the lambda function, approved origins etc to amazon connect
 Metadata:
   StageName : ServiceVoiceContactCenterProvision

@@ -6,13 +6,16 @@ const axiosWrapper = require("../axiosWrapper.js");
 jest.mock("../utils");
 const utils = require("../utils.js");
 
+jest.mock("../secretUtils");
+const secretUtils = require("../secretUtils.js");
+
 const queryEngine = require('../queryEngine.js');
 const api = require('../sfRestApi.js');
 
 jest.mock('jsonwebtoken');
 const jwt = require('jsonwebtoken');
 
-afterEach(() => {    
+afterEach(() => {
   jest.clearAllMocks();
 });
 
@@ -34,6 +37,17 @@ describe('InvalidConsumerKey', ()=> {
                 }
             }
         }
+        const configs = {
+            callCenterApiName: "callCenterApiNameVal",
+            baseURL: "baseURLVal",
+            authEndpoint: "authEndpointVal",
+            consumerKey: "consumerKeyVal",
+            privateKey: "privateKeyVal",
+            audience: "audienceVal",
+            subject: "subjectVal"
+        };
+
+        secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
         utils.getAccessToken.mockImplementationOnce(() => Promise.reject(error));
         axiosWrapper.apiEndpoint.mockImplementationOnce(() => Promise.resolve(error));
 
@@ -57,6 +71,17 @@ describe('InvalidConsumerKey', ()=> {
             code: "ERR_OSSL_PEM_BAD_END_LINE",
             reason: "bad end line"
         }
+        const configs = {
+            callCenterApiName: "callCenterApiNameVal",
+            baseURL: "baseURLVal",
+            authEndpoint: "authEndpointVal",
+            consumerKey: "consumerKeyVal",
+            privateKey: "privateKeyVal",
+            audience: "audienceVal",
+            subject: "subjectVal"
+        };
+
+        secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
         utils.getAccessToken.mockImplementationOnce(() => Promise.reject(error));
         axiosWrapper.authEndpoint.mockImplementationOnce(() => Promise.resolve(error));
 
@@ -87,6 +112,17 @@ describe('InvalidConsumerKey', ()=> {
                 }
             }
         }
+        const configs = {
+            callCenterApiName: "callCenterApiNameVal",
+            baseURL: "baseURLVal",
+            authEndpoint: "authEndpointVal",
+            consumerKey: "consumerKeyVal",
+            privateKey: "privateKeyVal",
+            audience: "audienceVal",
+            subject: "subjectVal"
+        };
+
+        secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
         utils.getAccessToken.mockImplementationOnce(() => Promise.reject(error));
         axiosWrapper.authEndpoint.mockImplementationOnce(() => Promise.resolve(error));
 
@@ -117,6 +153,17 @@ describe('InvalidConsumerKey', ()=> {
                 }
             }
         }
+        const configs = {
+            callCenterApiName: "callCenterApiNameVal",
+            baseURL: "baseURLVal",
+            authEndpoint: "authEndpointVal",
+            consumerKey: "consumerKeyVal",
+            privateKey: "privateKeyVal",
+            audience: "audienceVal",
+            subject: "subjectVal"
+        };
+
+        secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
         utils.getAccessToken.mockImplementationOnce(() => Promise.reject(error));
         axiosWrapper.authEndpoint.mockImplementationOnce(() => Promise.resolve(error));
 

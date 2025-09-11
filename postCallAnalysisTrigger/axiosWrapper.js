@@ -2,13 +2,20 @@ const axios = require("axios");
 const axiosRetry = require("axios-retry");
 const logger = require("axios-logger");
 const config = require("./config");
+const secretUtils = require("./secretUtils");
 const SCVLoggingUtil = require("./SCVLoggingUtil");
 
-const scrtEndpoint = axios.create({
-  baseURL: config.scrtEndpointBase,
+let scrtEndpoint = null;
+
+async function getScrtEndpoint() {
+    if (scrtEndpoint) return scrtEndpoint;
+
+    const configData = await secretUtils.getSecretConfigs(config.secretName);
+    scrtEndpoint = axios.create({
+        baseURL: configData.scrtEndpointBase,
 });
 
-if (process.env.LOG_LEVEL === "debug") {
+if (config.logLevel === "debug") {
   scrtEndpoint.interceptors.request.use(
     logger.requestLogger,
     logger.errorLogger
@@ -38,6 +45,9 @@ axiosRetry(scrtEndpoint, {
   },
 });
 
+    return scrtEndpoint;
+}
+
 module.exports = {
-  scrtEndpoint,
+    getScrtEndpoint,
 };

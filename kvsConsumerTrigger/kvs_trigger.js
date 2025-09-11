@@ -55,6 +55,14 @@ exports.handler = (event, context, callback) => {
   const vocabularyFilterMethod =
     event.Details.Parameters.vocabularyFilterMethod || null;
   const specialty = event.Details.Parameters.specialty || null;
+  const secretNameFromAttributes =
+    event.Details.ContactData?.Attributes?.secretName || null;
+
+  const resolvedSecretName = secretNameFromAttributes || process.env.SECRET_NAME;
+  if (!resolvedSecretName) {
+    throw new Error('Secret name not provided in call attributes or SECRET_NAME environment variable');
+  }
+  payload.secretName = resolvedSecretName;
 
   if (vocabularyName !== null) {
     payload.vocabularyName = vocabularyName;

@@ -11,6 +11,7 @@ describe('shouldProcessCTRTests', () => {
 	let inboundCall = {
 		InitiationMethod: "INBOUND",
 		ContactId: "placeHolderContactId",
+		Channel: "VOICE"
 	};
 	it ('should process inbound calls', () => {
 		expect(handler.shouldProcessCtr(inboundCall)).toBeTruthy();
@@ -19,6 +20,7 @@ describe('shouldProcessCTRTests', () => {
 	let outboundCall = {
 		InitiationMethod: "OUTBOUND",
 		ContactId: "placeHolderContactId",
+		Channel: "VOICE"
 	};
 	it ('should process outbound calls', () => {
 		expect(handler.shouldProcessCtr(outboundCall)).toBeTruthy();
@@ -27,6 +29,7 @@ describe('shouldProcessCTRTests', () => {
 	let transferCall = {
 		InitiationMethod: "TRANSFER",
 		ContactId: "placeHolderContactId",
+		Channel: "VOICE"
 	};
 	it ('should process transfer calls', () => {
 		expect(handler.shouldProcessCtr(transferCall)).toBeTruthy();
@@ -35,6 +38,7 @@ describe('shouldProcessCTRTests', () => {
 	let callbackCall = {
 		InitiationMethod: "CALLBACK",
 		ContactId: "placeHolderContactId",
+		Channel: "VOICE"
 	};
 	it ('should process callback calls', () => {
 		expect(handler.shouldProcessCtr(callbackCall)).toBeTruthy();
@@ -43,6 +47,7 @@ describe('shouldProcessCTRTests', () => {
 	let apiCall = {
 		InitiationMethod: "API",
 		ContactId: "placeHolderContactId",
+		Channel: "VOICE"
 	};
 	it ('should process api calls', () => {
 		expect(handler.shouldProcessCtr(apiCall)).toBeTruthy();
@@ -51,6 +56,7 @@ describe('shouldProcessCTRTests', () => {
 	let disconnectCall = {
 		InitiationMethod: "DISCONNECT",
 		ContactId: "placeHolderContactId",
+		Channel: "VOICE"
 	};
 	it ('should not process disconnect calls', () => {
 		expect(handler.shouldProcessCtr(disconnectCall)).toBeFalsy();
@@ -63,6 +69,7 @@ describe('shouldProcessCTRTests', () => {
 		Attributes: {
 			vm_flag: 1
 		},
+		Channel: "VOICE"
 	};
 	it('should not process voicemails', () => {
 		expect(handler.shouldProcessCtr(voicemailCall)).toBeFalsy();
@@ -75,6 +82,7 @@ describe('shouldProcessCTRTests', () => {
 		Attributes: {
 			vm_flag: 1,
 		},
+		Channel: "VOICE"
 	};
 	it('should process incomplete voicemails', () => {
 		expect(handler.shouldProcessCtr(incompleteVoicemailCall)).toBeTruthy();
@@ -84,6 +92,7 @@ describe('shouldProcessCTRTests', () => {
 		InitiationMethod: "INBOUND",
 		ContactId: "placeHolderContactId",
 		Recordings: ["placeholderRecordingsValue"],
+		Channel: "VOICE"
 	}
 	it('should process misformatted voicemails - test 1', () => {
 		expect(handler.shouldProcessCtr(misformattedVoicemailCall1)).toBeTruthy();
@@ -96,6 +105,7 @@ describe('shouldProcessCTRTests', () => {
 		Attributes: {
 			placeholderKey: "placeHolderValue",
 		},
+		Channel: "VOICE"
 	}
 	it('should process misformatted voicemails - test 2', () => {
 		expect(handler.shouldProcessCtr(misformattedVoicemailCall2)).toBeTruthy();
@@ -106,7 +116,8 @@ describe('shouldProcessCTRTests', () => {
 		ContactId: "placeHolderContactId",
 		Attributes: {
 			NoSync: 'true'
-		}
+		},
+		Channel: "VOICE"
 	}
 	it('should not process when NoSync attribute set to true - test 1', () => {
 		expect(handler.shouldProcessCtr(noSyncVoiceCall1)).toBeFalsy();
@@ -117,10 +128,29 @@ describe('shouldProcessCTRTests', () => {
 		ContactId: "placeHolderContactId",
 		Attributes: {
 			NoSync: 'false'
-		}
+		},
+		Channel: "VOICE"
 	}
 	it('should process when NoSync attribute set to false - test 2', () => {
 		expect(handler.shouldProcessCtr(noSyncVoiceCall2)).toBeTruthy();
+	});
+
+	let voiceCTR1 = {
+		InitiationMethod: "INBOUND",
+		ContactId: "placeHolderContactId",
+		Channel: "VOICE"
+	}
+	it('should process when CTR record is for VOICE channel', () => {
+		expect(handler.shouldProcessCtr(voiceCTR1)).toBeTruthy();
+	});
+
+	let voiceCTR2 = {
+		InitiationMethod: "INBOUND",
+		ContactId: "placeHolderContactId",
+		Channel: "CHAT"
+	}
+	it('should not process when CTR record is for CHAT channel', () => {
+		expect(handler.shouldProcessCtr(voiceCTR2)).toBeFalsy();
 	});
 });
 

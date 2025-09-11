@@ -1,40 +1,8 @@
 const jwt = require("jsonwebtoken");
-const SSM = require("aws-sdk/clients/ssm");
 const uuid = require("uuid/v1");
 const config = require("./config");
 const axiosWrapper = require("./axiosWrapper");
-
-async function getSSMParameters(paramNames, withDecryption) {
-  return new Promise((resolve) => {
-    const ssm = new SSM();
-    const query = {
-      Names: paramNames,
-      WithDecryption: withDecryption,
-    };
-
-    ssm.getParameters(query, (err, data) => {
-      let params = [];
-
-      if (!err && data && data.Parameters && data.Parameters.length) {
-        params = data.Parameters;
-      }
-      resolve(params);
-    });
-  });
-}
-
-function putSSMParameter(name, value) {
-  const ssm = new SSM();
-  const param = {
-    Name: name,
-    Value: value,
-    Tier: "Standard",
-    Type: "SecureString",
-    Overwrite: true,
-  };
-
-  ssm.putParameter(param, () => {});
-}
+const secretUtils = require("./secretUtils");
 
 function generateJWT(payload, expiresIn, privateKey) {
   const options = {
@@ -46,32 +14,17 @@ function generateJWT(payload, expiresIn, privateKey) {
   return jwt.sign(payload, privateKey, options);
 }
 
-async function getAccessToken(refresh) {
-  const ssmParams = await getSSMParameters(
-    [
-      config.consumerKeyParamName,
-      config.privateKeyParamName,
-      config.accessTokenParamName,
-      config.audienceParamName,
-      config.subjectParamName,
-    ],
-    true
-  );
-  const consumerKey = ssmParams.filter(
-    (p) => p.Name === config.consumerKeyParamName
-  )[0].Value;
-  const privateKey = ssmParams.filter(
-    (p) => p.Name === config.privateKeyParamName
-  )[0].Value;
-  const accessTokenParam = ssmParams.filter(
-    (p) => p.Name === config.accessTokenParamName
-  )[0];
-  const aud = ssmParams.filter((p) => p.Name === config.audienceParamName)[0]
-    .Value;
-  const sub = ssmParams.filter((p) => p.Name === config.subjectParamName)[0]
-    .Value;
+async function getAccessToken(configs, accessTokenSecretName, refresh) {
+  const callCenterApiName = configs.callCenterApiName;
+  const consumerKey = configs.consumerKey;
+  const privateKey = configs.privateKey;
+  const aud = configs.audience;
+  const sub = configs.subject;
 
-  if (!accessTokenParam || refresh) {
+  const accessTokenSecret = await secretUtils.readSecret(accessTokenSecretName);
+  const accessToken = accessTokenSecret[callCenterApiName + "-salesforce-rest-api-access-token"];
+
+  if (!accessToken || refresh) {
     // Obtain a new access token.
     const generatedJwt = generateJWT(
       {
@@ -83,7 +36,7 @@ async function getAccessToken(refresh) {
       privateKey
     );
     const response = await axiosWrapper.authEndpoint.post(
-      "",
+        configs.authEndpoint,
       `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${generatedJwt}`,
       {
         headers: {
@@ -92,12 +45,13 @@ async function getAccessToken(refresh) {
       }
     );
 
-    putSSMParameter(config.accessTokenParamName, response.data.access_token);
+    accessTokenSecret[callCenterApiName + "-salesforce-rest-api-access-token"] = response.data.access_token;
+    await secretUtils.updateSecret(accessTokenSecretName, accessTokenSecret);
 
     return response.data.access_token;
   }
 
-  return accessTokenParam.Value;
+  return accessToken;
 }
 
 function formatObjectApiName(objectApiName) {
@@ -107,7 +61,7 @@ function formatObjectApiName(objectApiName) {
   return `${firstChar.toUpperCase()}${remainingStr.toLowerCase()}`;
 }
 
-const NON_FIELD_NAMES = ["methodName", "objectApiName", "recordId"];
+const NON_FIELD_NAMES = ["methodName", "objectApiName", "recordId", "secretName", "accessTokenSecretName"];
 
 function getSObjectFieldValuesFromConnectLambdaParams(params) {
   const fieldValues = {};
@@ -129,7 +83,7 @@ function getRealtimeAlertEventFieldValuesFromConnectLambdaParams(params) {
   const fieldValues = {};
   Object.entries(params).forEach((entry) => {
     const key = entry[0];
-    if (key !== "methodName") {
+    if (key !== "methodName" && key !== "secretName" && key !== "accessTokenSecretName") {
       fieldValues[key] = entry[1];
     }
   });

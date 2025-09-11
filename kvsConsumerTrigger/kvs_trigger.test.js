@@ -54,8 +54,12 @@ describe("Unit tests for kvs_trigger.js", () => {
     specialty: "ONCOLOGY",
   };
 
+  const inputEventWithSecretName = JSON.parse(JSON.stringify(inputEvent));
+  inputEventWithSecretName.Details.ContactData.Attributes.secretName = "custom-secret-name";
+
   beforeEach(() => {
     mockInvoke.mockImplementation(() => ({ lambdaResult: "Success" }));
+    mockInvoke.mockClear(); // Ensure we clear previous calls
   });
 
   afterEach(() => {
@@ -79,25 +83,33 @@ describe("Unit tests for kvs_trigger.js", () => {
   }
 
   it("should be invoked once", () => {
+    process.env.SECRET_NAME = "test-secret-name";
     myHandler(inputEvent, {}, (err, data) => data);
     expect(mockInvoke).toHaveBeenCalledTimes(1);
+    delete process.env.SECRET_NAME;
   });
 
   it("should return expected message", () => {
+    process.env.SECRET_NAME = "test-secret-name";
     myHandler(inputEvent, {}, (err, data) => data);
     expect(mockInvoke()).toStrictEqual({ lambdaResult: "Success" });
+    delete process.env.SECRET_NAME;
   });
 
   it("should be called with expected params", () => {
+    process.env.SECRET_NAME = "test-secret-name";
     myHandler(inputEvent, {}, (err, data) => data);
     let actualParams = mockInvoke.mock.calls[0][0];
     actualParams = JSON.parse(actualParams.Payload);
     assertParams(actualParams);
     expect(actualParams.InvocationType === "Event");
     expect(actualParams.engine).toBe("standard");
+    expect(actualParams.secretName).toBe("test-secret-name");
+    delete process.env.SECRET_NAME;
   });
 
   it("should be called with expected custom params", () => {
+    process.env.SECRET_NAME = "test-secret-name";
     myHandler(inputEventCustom, {}, (err, data) => data);
     let actualParams = mockInvoke.mock.calls[0][0];
     actualParams = JSON.parse(actualParams.Payload);
@@ -106,9 +118,12 @@ describe("Unit tests for kvs_trigger.js", () => {
     expect(actualParams.vocabularyFilterName).toBe("VocabFilterName");
     expect(actualParams.vocabularyFilterMethod).toBe("MASK");
     expect(actualParams.InvocationType === "Event");
+    expect(actualParams.secretName).toBe("test-secret-name");
+    delete process.env.SECRET_NAME;
   });
 
   it("should be called with expected medical params", () => {
+    process.env.SECRET_NAME = "test-secret-name";
     myHandler(inputEventMedical, {}, (err, data) => data);
     let actualParams = mockInvoke.mock.calls[0][0];
     actualParams = JSON.parse(actualParams.Payload);
@@ -116,5 +131,34 @@ describe("Unit tests for kvs_trigger.js", () => {
     expect(actualParams.engine).toBe("medical");
     expect(actualParams.specialty).toBe("ONCOLOGY");
     expect(actualParams.InvocationType === "Event");
+    expect(actualParams.secretName).toBe("test-secret-name");
+    delete process.env.SECRET_NAME;
+  });
+
+  it("should be called with secretName when provided in call attributes", () => {
+    myHandler(inputEventWithSecretName, {}, (err, data) => data);
+    let actualParams = mockInvoke.mock.calls[0][0];
+    actualParams = JSON.parse(actualParams.Payload);
+    assertParams(actualParams);
+    expect(actualParams.secretName).toBe("custom-secret-name");
+    expect(actualParams.InvocationType === "Event");
+  });
+
+  it("should use SECRET_NAME environment variable when not provided in call attributes", () => {
+    process.env.SECRET_NAME = "default-secret-name";
+    myHandler(inputEvent, {}, (err, data) => data);
+    let actualParams = mockInvoke.mock.calls[0][0];
+    actualParams = JSON.parse(actualParams.Payload);
+    assertParams(actualParams);
+    expect(actualParams.secretName).toBe("default-secret-name");
+    expect(actualParams.InvocationType === "Event");
+    delete process.env.SECRET_NAME;
+  });
+
+  it("should throw error when no secretName available from attributes or environment", () => {
+    delete process.env.SECRET_NAME;
+    expect(() => {
+      myHandler(inputEvent, {}, (err, data) => data);
+    }).toThrow('Secret name not provided in call attributes or SECRET_NAME environment variable');
   });
 });

@@ -3,6 +3,7 @@ const axiosWrapper = require("./axiosWrapper");
 const SCVLoggingUtil = require("./SCVLoggingUtil");
 const { Readable } = require("stream");
 const FormData = require("form-data");
+const secretUtils = require("./secretUtils");
 
 function buildError(e) {
   const status = e.response ? e.response.status : 500;
@@ -31,31 +32,35 @@ function buildError(e) {
   };
 }
 
-async function sendRequest(method, url, data, headersVal) {
+async function sendRequest(secretName, accessTokenSecretName, method, url, data, headersVal) {
   let accessToken;
   const headers = headersVal || {};
+  const configs = await secretUtils.getSecretConfigs(secretName);
+  const baseURL = configs.baseURL;
 
   try {
-    accessToken = await utils.getAccessToken();
+    accessToken = await utils.getAccessToken(configs, accessTokenSecretName);
     headers.Authorization = `Bearer ${accessToken}`;
 
-    return await axiosWrapper.apiEndpoint({ method, url, data, headers });
+    return await axiosWrapper.apiEndpoint({ method, baseURL, url, data, headers });
   } catch (e) {
     if (e.response && e.response.status === 401) {
       // Obtain a new access token since the cached one already expired.
-      accessToken = await utils.getAccessToken(true);
+      accessToken = await utils.getAccessToken(configs, accessTokenSecretName, true);
       headers.Authorization = `Bearer ${accessToken}`;
 
-      return axiosWrapper.apiEndpoint({ method, url, data, headers });
+      return await axiosWrapper.apiEndpoint({ method, baseURL, url, data, headers });
     }
 
     throw e;
   }
 }
 
-async function createRecord(objectApiName, fieldValues) {
+async function createRecord(objectApiName, fieldValues, secretName, accessTokenSecretName) {
   try {
     const response = await sendRequest(
+      secretName,
+      accessTokenSecretName,
       "post",
       `/sobjects/${objectApiName}`,
       fieldValues,
@@ -75,9 +80,11 @@ async function createRecord(objectApiName, fieldValues) {
   }
 }
 
-async function updateRecord(objectApiName, recordId, fieldValues) {
+async function updateRecord(objectApiName, recordId, fieldValues, secretName, accessTokenSecretName) {
   try {
     const response = await sendRequest(
+      secretName,
+      accessTokenSecretName,
       "patch",
       `/sobjects/${objectApiName}/${recordId}`,
       fieldValues,
@@ -101,9 +108,11 @@ async function updateRecord(objectApiName, recordId, fieldValues) {
   }
 }
 
-async function sendRealtimeAlertEvent(fieldValues) {
+async function sendRealtimeAlertEvent(fieldValues, secretName, accessTokenSecretName) {
   try {
     const response = await sendRequest(
+      secretName,
+      accessTokenSecretName,
       "post",
       "/sobjects/RealtimeAlertEvent",
       fieldValues,
@@ -122,7 +131,7 @@ async function sendRealtimeAlertEvent(fieldValues) {
   }
 }
 
-async function uploadTranscript(contactIdsPayloadMap) {
+async function uploadTranscript(contactIdsPayloadMap, secretName, accessTokenSecretName) {
   try {
     const formData = new FormData();
     const headers = Object.assign(
@@ -146,6 +155,8 @@ async function uploadTranscript(contactIdsPayloadMap) {
       i++;
     }
     const response = await sendRequest(
+      secretName,
+      accessTokenSecretName,
       "post",
       "connect/conversations/upload",
       formData,
@@ -162,7 +173,7 @@ async function uploadTranscript(contactIdsPayloadMap) {
   }
 }
 
-async function fetchUploadIdsStatus(uploadIds) {
+async function fetchUploadIdsStatus(uploadIds, secretName, accessTokenSecretName) {
   SCVLoggingUtil.debug({
     category: "sfRestApi.fetchUploadIdsStatus",
     message: "Send fetchUploadIdsStatus",
@@ -170,6 +181,8 @@ async function fetchUploadIdsStatus(uploadIds) {
   });
   try {
     const response = await sendRequest(
+      secretName,
+      accessTokenSecretName,
       "get",
       `connect/conversations/upload?uploadIds=${encodeURIComponent(uploadIds)}`
     );
@@ -184,9 +197,11 @@ async function fetchUploadIdsStatus(uploadIds) {
   }
 }
 
-async function queryRecord(soql) {
+async function queryRecord(soql, secretName, accessTokenSecretName) {
   try {
     const response = await sendRequest(
+      secretName,
+      accessTokenSecretName,
       "get",
       `/query/?q=${encodeURIComponent(soql)}`
     );
@@ -206,9 +221,11 @@ async function queryRecord(soql) {
   }
 }
 
-async function searchRecord(sosl) {
+async function searchRecord(sosl, secretName, accessTokenSecretName) {
   try {
     const response = await sendRequest(
+      secretName,
+      accessTokenSecretName,
       "get",
       `/search/?q=${encodeURIComponent(sosl)}`
     );

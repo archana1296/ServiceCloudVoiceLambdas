@@ -7,6 +7,7 @@ const ERROR_DISCONNECT_REASON = [
 ];
 
 const WEBRTC_DEFAULT = "WebRTC_Default";
+const CALLBACK_DISCONNECT_REASON = "CALLBACK";
 
 /**
  * Filter call attributes to be included in API payload based on prefix and strip prefix
@@ -35,15 +36,25 @@ function getCallAttributes(rawCallAttributes) {
 
 function transformCTR(ctr) {
   const voiceCall = {};
-
   voiceCall.startTime = ctr.InitiationTimestamp;
   voiceCall.endTime = ctr.DisconnectTimestamp;
   voiceCall.parentCallIdentifier = ctr.PreviousContactId;
   voiceCall.disconnectReason = {
-    value: ctr.DisconnectReason,
+    value: ctr.DisconnectReason || "UNKNOWN",
     isError: ERROR_DISCONNECT_REASON.includes(ctr.DisconnectReason),
   };
 
+  //If user has dropped the callback, we need to set the disconnect reason to CALLBACK so that voicecall will not be marked as abandoned by omni
+  if(ctr?.Attributes?.callback_flag) {
+    voiceCall.disconnectReason = {
+      value: CALLBACK_DISCONNECT_REASON,
+      isError: false,
+    };
+  }
+  // In multiorg usecase, secret name will be passed from contactFlow.
+  if(ctr?.Attributes?.secretName) {
+    voiceCall.secretName = ctr?.Attributes?.secretName
+  }
   if (ctr.Agent) {
     voiceCall.acceptTime = ctr.Agent.ConnectedToAgentTimestamp;
     voiceCall.totalHoldDuration = ctr.Agent.CustomerHoldDuration;

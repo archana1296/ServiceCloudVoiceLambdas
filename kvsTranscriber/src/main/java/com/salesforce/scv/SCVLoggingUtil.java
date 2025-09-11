@@ -37,9 +37,10 @@ public class SCVLoggingUtil {
      *  INFO,   // For generally useful information to log
      *  WARN,   // For anything that can potentially cause application oddities
      *  ERROR,  // For any error which is fatal to the operation
+     *  DEBUG,  // Only when you would be "debugging" the code and trying to find one part of a function specifically
      *  TRACE,  // Only when you would be "tracing" the code and trying to find one part of a function specifically
      */
-    
+
     /**
      * Create a log line with level of INFO
      *
@@ -74,6 +75,18 @@ public class SCVLoggingUtil {
      */
     public static void error(String logCategory, EVENT_TYPE eventType, String message, Map<String, String> context) {
         logger.error(createLoggingMessage(logCategory, eventType, message, context));
+    }
+
+    /**
+     * Create a log line with level of DEBUG.
+     *
+     * @param logCategory fully qualified function/name
+     * @param eventType performance / transcription / voicecall / ivr / inbounc / outbound / transfer
+     * @param message meaningful log messages
+     * @param context map of key/value pairs of all related information (please refer to recommended context key for each EventType)
+     */
+    public static void debug(String logCategory, EVENT_TYPE eventType, String message, Map<String, String> context) {
+        logger.debug(createLoggingMessage(logCategory, eventType, message, context));
     }
 
     /**
@@ -176,7 +189,7 @@ public class SCVLoggingUtil {
      * Public enum for recommended context key of performance.
      */
     public enum PERFORMANCE_CONTEXT_KEY {
-        ORG_ID, // required 
+        ORG_ID, // required
         TOTAL_RESPONSE_TIME_NS, // add unit for time related keys
         SELF_TIME_NS,
         EXTERNAL_TIME_NS,

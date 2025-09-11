@@ -13,6 +13,8 @@ exports.handler = async function (event, context) {
   /* Sample input request
   {
     "operation": "uploadTranscript",
+    "secretName": "callCenterApiName-salesforce-secret", // org. secret name is at the top payload level, and customer needs to make sure all the contactIds in this payload are for one org. for this corresponding org.'s secret
+    "accessTokenSecretName": "callCenterApiName-salesforce-access-token-secret",
     "payload": [
       {
         "contactId": "8c6258f0-66fa-4137-a61f-68311bb6d300",
@@ -27,7 +29,21 @@ exports.handler = async function (event, context) {
         ]
       }
     ]
-  }*/
+  }
+
+  {
+  "operation": "fetchUploadIdsStatus",
+  "secretName": "callCenterApiName-salesforce-secret",
+  "accessTokenSecretName": "callCenterApiName-salesforce-access-token-secret",
+  "uploadIds": [
+    "f230e3d9-6c0f-3909-a0a8-1b78c634bbde",
+    "68279b80-a394-3228-b99b-c60f02ff8227"
+  ]
+  }
+  */
+  const secretName = event.secretName || config.secretName;
+  const accessTokenSecretName = event.accessTokenSecretName || config.accessTokenSecretName;
+
   switch (event.operation) {
     case "uploadTranscript": {
       const { uploadSuccess, uploadResult } =
@@ -36,7 +52,9 @@ exports.handler = async function (event, context) {
         const awsAccountId = context.invokedFunctionArn.split(":")[4];
         return await transcriptUploader.processTranscript(
           awsAccountId,
-          event.payload
+          event.payload,
+          secretName,
+          accessTokenSecretName
         );
       }
       return uploadResult;
@@ -45,7 +63,7 @@ exports.handler = async function (event, context) {
       const { fetchSuccess, fetchResult } =
         validateFetchUploadIdsStatusRequest(event);
       if (fetchSuccess) {
-        return await fetchUploadIdsStatus.processFetchUploadIdsStatus(event);
+        return await fetchUploadIdsStatus.processFetchUploadIdsStatus(event, secretName, accessTokenSecretName);
       }
       return fetchResult;
     }

@@ -5,18 +5,19 @@ const queryEngine = require("./queryEngine");
 const utils = require("./utils");
 const SFSPhoneCallFlow = require("./SFSPhoneCallFlow");
 const { fetchOutboundPhoneNumber } = require("./fetchOutboundPhoneNumber");
+const config = require("./config");
 
 // --------------- Events -----------------------
 
 // invoked by invoking lambda through amazon connect
-async function dispatchQuery(soql, event) {
+async function dispatchQuery(soql, event, secretName, accessTokenSecretName) {
   const parameters = event.Details.Parameters;
-  const queryResult = await queryEngine.invokeQuery(soql, parameters);
+  const queryResult = await queryEngine.invokeQuery(soql, parameters, secretName, accessTokenSecretName);
   return flatten(queryResult);
 }
 
-async function dispatchSearch(sosl) {
-  const searchResult = await api.searchRecord(sosl);
+async function dispatchSearch(sosl, secretName, accessTokenSecretName) {
+  const searchResult = await api.searchRecord(sosl, secretName, accessTokenSecretName);
   return flatten(searchResult);
 }
 
@@ -25,6 +26,9 @@ exports.handler = async (event) => {
   let result = {};
   const { methodName, objectApiName, recordId, soql, sosl } =
     event.Details.Parameters;
+
+  const secretName = event.Details.Parameters.secretName || event.Details.ContactData?.Attributes?.secretName || config.secretName;
+  const accessTokenSecretName = event.Details.Parameters.accessTokenSecretName || event.Details.ContactData?.Attributes?.accessTokenSecretName || config.accessTokenSecretName;
 
   SCVLoggingUtil.debug({
     message: "InvokeSFRestApi event received",
@@ -36,7 +40,9 @@ exports.handler = async (event) => {
         utils.formatObjectApiName(objectApiName),
         utils.getSObjectFieldValuesFromConnectLambdaParams(
           event.Details.Parameters
-        )
+        ),
+        secretName,
+        accessTokenSecretName
       );
       break;
     case "updateRecord":
@@ -45,26 +51,32 @@ exports.handler = async (event) => {
         recordId,
         utils.getSObjectFieldValuesFromConnectLambdaParams(
           event.Details.Parameters
-        )
+        ),
+        secretName,
+        accessTokenSecretName
       );
       break;
     case "queryRecord": {
-      result = dispatchQuery(soql, event);
+      result = dispatchQuery(soql, event, secretName, accessTokenSecretName);
       break;
     }
     case "searchRecord": {
-      result = dispatchSearch(sosl);
+      result = dispatchSearch(sosl, secretName, accessTokenSecretName);
       break;
     }
     case "uploadTranscript": {
       result = await api.uploadTranscript(
-        event.Details.Parameters.contactIdsPayloadMap
+        event.Details.Parameters.contactIdsPayloadMap,
+        secretName,
+        accessTokenSecretName
       );
       break;
     }
     case "fetchUploadIdsStatus": {
       result = await api.fetchUploadIdsStatus(
-        event.Details.Parameters.uploadIds
+        event.Details.Parameters.uploadIds,
+        secretName,
+        accessTokenSecretName
       );
       break;
     }
@@ -72,17 +84,19 @@ exports.handler = async (event) => {
       result = await api.sendRealtimeAlertEvent(
         utils.getRealtimeAlertEventFieldValuesFromConnectLambdaParams(
           event.Details.Parameters
-        )
+        ),
+        secretName,
+        accessTokenSecretName
       );
       break;
     }
     case "SFSPhoneCallFlowQuery": {
-      const res = await SFSPhoneCallFlow.entryPoint(event);
+      const res = await SFSPhoneCallFlow.entryPoint(event, secretName, accessTokenSecretName);
       result = flatten(res);
       break;
     }
     case "fetchOutboundPhoneNumber": {
-      result = await fetchOutboundPhoneNumber(event);
+      result = await fetchOutboundPhoneNumber(event, secretName, accessTokenSecretName);
       break;
     }
     default: {
