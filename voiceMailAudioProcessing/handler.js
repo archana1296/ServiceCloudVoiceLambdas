@@ -11,7 +11,7 @@ const kinesisVideo = new AWS.KinesisVideo({
 const kinesisVideoMedia = new AWS.KinesisVideoMedia({
   region: process.env.aws_region,
 });
-const BUCKET_NAME = process.env.s3_recordings_bucket;
+const BUCKET_NAME = process.env.S3_RECORDINGS_BUCKET;
 const AUDIO_MIME_TYPE = "audio/x-wav";
 const RECORDINGS_FOLDER = "voicemail_recordings";
 const WRITER_CONFIG = {

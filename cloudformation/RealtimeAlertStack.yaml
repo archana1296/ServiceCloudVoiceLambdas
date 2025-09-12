@@ -76,26 +76,30 @@ Conditions:
   UseSourceCondition: !Or
     - !Equals [ !Ref InstanceType, "SOURCE" ]
     - !Equals [ !Ref InstanceType, "MULTIORG" ]
+  CreateEventTriggers: !Not
+    - !Equals [ !Ref InstanceType, "MULTIORG" ]
 Resources:
 
   RealtimeAlertLambda:
     Type: AWS::Serverless::Function
+    Condition: CreateEventTriggers
     Properties:
       CodeUri:
         Bucket: !Sub "${S3BucketForScvResources}-${AWS::Region}"
         Key: !Sub "${SalesforceRelease}/realtimeAlert${Version}"
       Environment:
         Variables:
+          LOG_LEVEL: "info"
           INVOKE_SALESFORCE_REST_API_ARN: !Sub "${InvokeSalesforceRestApiArn}"
           CONNECT_INSTANCE_ID: !Sub "${ConnectInstanceId}"
-          LOG_LEVEL: "info"
+          SECRET_NAME: !Sub "${CallCenterApiName}-salesforce-secret"
 
       Handler: handler.handler
       AutoPublishAlias: active
       VersionDescription: !Sub "Service Cloud Voice Lambda Version ${Version}"
       Role: !Sub "${RealtimeAlertRole}"
       Timeout: 15
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       FunctionName: !Sub "${CallCenterApiName}-RealtimeAlert"
       Layers:
         - !Ref RealtimeAlertLayer
@@ -108,30 +112,32 @@ Resources:
 
   RealtimeAlertLayer:
     Type: AWS::Serverless::LayerVersion
+    Condition: CreateEventTriggers
     Properties:
-      LayerName: RealtimeAlertFunctionLayer
+      LayerName: !Sub "${CallCenterApiName}-RealtimeAlertFunctionLayer"
       Description: Realtime alert Function layer
       ContentUri:
         Bucket: !Sub "${S3BucketForScvResources}-${AWS::Region}"
         Key: !Sub "${SalesforceRelease}/realtimeAlertFunctionLayer${Version}"
       CompatibleRuntimes:
-        - nodejs20.x
+        - nodejs22.x
     Metadata:
-      BuildMethod: nodejs20.x
+      BuildMethod: nodejs22.x
 
   RealtimeAlertAlarmSnsTopic:
     Type: AWS::SNS::Topic
+    Condition: CreateEventTriggers
     DependsOn:
       - RealtimeAlertLambda
     Properties:
-      TopicName:
-        !Sub "${CallCenterApiName}-RealtimeAlertTopic"
+      TopicName: !Sub "${CallCenterApiName}-RealtimeAlertTopic"
       Subscription:
         - Protocol: lambda
           Endpoint: !GetAtt RealtimeAlertLambda.Arn
 
   RealtimeAlertLambdaPermission:
     Type: AWS::Lambda::Permission
+    Condition: CreateEventTriggers
     Properties:
       Action: "lambda:InvokeFunction"
       FunctionName: !Ref RealtimeAlertLambda.Alias
@@ -139,6 +145,7 @@ Resources:
 
   RealtimeAlertAlarmSnsTopicPolicy:
     Type: AWS::SNS::TopicPolicy
+    Condition: CreateEventTriggers
     Properties:
       Topics:
         - !Ref RealtimeAlertAlarmSnsTopic
@@ -164,8 +171,10 @@ Resources:
       MetricName: ConcurrentCallsPercentage
       Statistic: Maximum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 0.8
       EvaluationPeriods: 10
@@ -187,8 +196,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -207,8 +218,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -227,8 +240,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -247,8 +262,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -267,8 +284,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -287,8 +306,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -308,8 +329,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -328,8 +351,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -349,8 +374,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -369,8 +396,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -389,8 +418,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -409,8 +440,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -429,8 +462,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -449,8 +484,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -469,8 +506,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -489,8 +528,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -509,8 +550,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -530,8 +573,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -550,8 +595,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -571,8 +618,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -591,8 +640,10 @@ Resources:
       MetricName: Errors
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 3
       EvaluationPeriods: 1
@@ -612,8 +663,10 @@ Resources:
       MetricName: Throttles
       Statistic: Sum
       Unit: Count
-      AlarmActions:
-        - !Ref RealtimeAlertAlarmSnsTopic
+      AlarmActions: !If
+        - CreateEventTriggers
+        - - !Ref RealtimeAlertAlarmSnsTopic
+        - !Ref AWS::NoValue
       Period: 60
       Threshold: 5
       EvaluationPeriods: 1
@@ -627,12 +680,18 @@ Resources:
     Type: "AWS::CloudWatch::Dashboard"
     Properties:
       DashboardBody: !Sub '{"widgets": [{"type": "metric","x": 0,"y": 0,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${InvokeSalesforceRestApiFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${InvokeSalesforceRestApiFunctionName}"}},{"type": "metric","x": 6,"y": 0,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${InvokeTelephonyIntegrationApiFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${InvokeTelephonyIntegrationApiFunctionName}"}},{"type": "metric","x": 12,"y": 0,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${CTRDataSyncFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${CTRDataSyncFunctionName}"}},{"type": "metric","x": 0,"y": 6,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${kvsTranscriberName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${kvsTranscriberName}"}},{"type": "metric","x": 6,"y": 6,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${kvsConsumerTriggerName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${kvsConsumerTriggerName}"}},{"type": "metric","x": 12,"y": 6,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${HandleContactEventsFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${HandleContactEventsFunctionName}"}},{"type": "metric","x": 0,"y": 12,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${ContactLensConsumerFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${ContactLensConsumerFunctionName}"}},{"type": "metric","x": 6,"y": 12,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${VoiceMailAudioProcessingFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${VoiceMailAudioProcessingFunctionName}"}},{"type": "metric","x": 12,"y": 12,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${VoiceMailPackagingFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${VoiceMailPackagingFunctionName}"}},{"type": "metric","x": 0,"y": 24,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${VoiceMailTranscribeFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${VoiceMailTranscribeFunctionName}"}}, {"type": "metric","x": 6,"y": 24,"width": 6,"height": 6,"properties": {"metrics": [["AWS/Lambda","Errors","FunctionName","${ContactDataSyncFunctionName}"],[".","ConcurrentExecutions",".","."],[".","Invocations",".","."],[".","Throttles",".","."]],"view": "timeSeries","stacked": true,"region": "${AWS::Region}","stat": "Sum","period": 300,"title": "${ContactDataSyncFunctionName}"}}]}'
-      DashboardName: !If [UseSourceCondition, !Sub '${CallCenterApiName}-ServiceCloudVoiceLambdaDashboard',!Sub '${CallCenterApiName}-Replica-ServiceCloudVoiceLambdaDashboard']
+      DashboardName: !If
+        - UseSourceCondition
+        - !Sub '${CallCenterApiName}-ServiceCloudVoiceLambdaDashboard'
+        - !Sub '${CallCenterApiName}-Replica-ServiceCloudVoiceLambdaDashboard'
   ServiceCloudVoiceConnectDashboard:
     Type: "AWS::CloudWatch::Dashboard"
     Properties:
       DashboardBody: !Sub '{"widgets":[{"type":"metric","x":0,"y":0,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","ToInstancePacketLossRate","Participant","Agent","Type of Connection","WebRTC","Instance ID","${ConnectInstanceId}","Stream Type","Voice"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"ToInstancePacketLossRate"}},{"type":"metric","x":6,"y":0,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","CallsBreachingConcurrencyQuota","InstanceId","${ConnectInstanceId}","MetricGroup","VoiceCalls"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"CallsBreachingConcurrencyQuota"}},{"type":"metric","x":0,"y":6,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","MissedCalls","InstanceId","${ConnectInstanceId}","MetricGroup","VoiceCalls"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"MissedCalls"}},{"type":"metric","x":6,"y":6,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","MisconfiguredPhoneNumbers","InstanceId","${ConnectInstanceId}","MetricGroup","VoiceCalls"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"MisconfiguredPhoneNumbers"}},{"type":"metric","x":6,"y":12,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","ThrottledCalls","InstanceId","${ConnectInstanceId}","MetricGroup","VoiceCalls"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"ThrottledCalls"}},{"type":"metric","x":0,"y":12,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","CallRecordingUploadError","InstanceId","${ConnectInstanceId}","MetricGroup","CallRecordings"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"CallRecordingUploadError"}},{"type":"metric","x":12,"y":0,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","CallsPerInterval","InstanceId","${ConnectInstanceId}","MetricGroup","VoiceCalls"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"CallsPerInterval"}},{"type":"metric","x":12,"y":6,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","ConcurrentCalls","InstanceId","${ConnectInstanceId}","MetricGroup","VoiceCalls"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"ConcurrentCalls"}},{"type":"metric","x":12,"y":12,"width":6,"height":6,"properties":{"metrics":[["AWS/Connect","ConcurrentCallsPercentage","InstanceId","${ConnectInstanceId}","MetricGroup","VoiceCalls"]],"view":"timeSeries","stacked":false,"region":"${AWS::Region}","stat":"Sum","period":300,"title":"ConcurrentCallsPercentage"}}]}'
-      DashboardName: !If [UseSourceCondition,!Sub '${CallCenterApiName}-ServiceCloudVoiceConnectDashboard',!Sub '${CallCenterApiName}-Replica-ServiceCloudVoiceConnectDashboard']
+      DashboardName: !If
+        - UseSourceCondition
+        - !Sub '${CallCenterApiName}-ServiceCloudVoiceConnectDashboard'
+        - !Sub '${CallCenterApiName}-Replica-ServiceCloudVoiceConnectDashboard'
 
 Outputs:
   ServiceCloudVoiceLambdaDashboard:

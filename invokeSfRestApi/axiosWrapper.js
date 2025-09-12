@@ -1,13 +1,9 @@
 const axios = require("axios");
 const logger = require("axios-logger");
-const config = require("./config");
 
-const apiEndpoint = axios.create({
-  baseURL: config.salesforceRestApiEndpointBase,
-});
-const authEndpoint = axios.create({
-  baseURL: config.salesforceAuthEndpoint,
-});
+const apiEndpoint = axios.create({});
+
+const authEndpoint = axios.create({});
 
 if (process.env.LOG_LEVEL === "debug") {
   apiEndpoint.interceptors.request.use(

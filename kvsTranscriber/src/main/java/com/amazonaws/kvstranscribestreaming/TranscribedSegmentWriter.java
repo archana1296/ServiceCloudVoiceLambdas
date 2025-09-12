@@ -19,7 +19,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Base64;
 import java.util.UUID;
-
 import java.time.temporal.ChronoUnit;
 import java.security.KeyFactory;
 import java.security.NoSuchAlgorithmException;
@@ -29,24 +28,15 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
 
-import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagement;
-import com.amazonaws.services.simplesystemsmanagement.AWSSimpleSystemsManagementClientBuilder;
-import com.amazonaws.services.simplesystemsmanagement.model.GetParameterRequest;
-import com.amazonaws.services.simplesystemsmanagement.model.GetParameterResult;
 import com.salesforce.scv.SCVLoggingUtil;
 
 /**
  * TranscribedSegmentWriter writes the transcript and sent to the Telephony Integration service on SCRT 2.0
  */
 public class TranscribedSegmentWriter {
-    private static final String SALESFORCE_ORG_ID = System.getenv("SALESFORCE_ORG_ID");
-    private static final String PRIVATE_KEY_PARAM_NAME = System.getenv("PRIVATE_KEY_PARAM_NAME");
-    private static final String CALL_CENTER_API_NAME = System.getenv("CALL_CENTER_API_NAME");
-    private static final String SCRT_ENDPOINT_BASE = System.getenv("SCRT_ENDPOINT_BASE");
+
     private static final String AUDIENCE = "https://scrt.salesforce.com";
     private static final String PRIVATE_KEY_START_DECORATION_LINE = "-----BEGIN RSA PRIVATE KEY-----";
     private static final String PRIVATE_KEY_END_DECORATION_LINE = "-----END RSA PRIVATE KEY-----";
@@ -62,13 +52,36 @@ public class TranscribedSegmentWriter {
     private String jwtToken = null;
     private String instanceARN = null;
 
-    public TranscribedSegmentWriter(String instanceARN, String voiceCallId, boolean isFromCustomer, long audioStartTimestamp, String customerPhoneNumber) {
+    // Config values extracted once in constructor
+    private final String scrtEndpointBase;
+    private final String salesforceOrgId;
+    private final String callCenterApiName;
+    private final String privateKey;
+
+    public TranscribedSegmentWriter(String instanceARN, String voiceCallId, boolean isFromCustomer, long audioStartTimestamp, String customerPhoneNumber, ConfigManager.SecretConfig config) {
         this.voiceCallId = Validate.notNull(voiceCallId);
         this.isFromCustomer = isFromCustomer;
         this.audioStartTimestamp = audioStartTimestamp;
         this.customerPhoneNumber = customerPhoneNumber;
         this.instanceARN = instanceARN;
+
+        this.scrtEndpointBase = config.getConfigValue("SCRT_ENDPOINT_BASE");
+        this.salesforceOrgId = config.getConfigValue("SALESFORCE_ORG_ID");
+        this.callCenterApiName = config.getConfigValue("CALL_CENTER_API_NAME");
+        String privateKeyParamName = this.callCenterApiName + "-scrt-jwt-auth-private-key";
+        String rawPrivateKey = config.getConfigValue(privateKeyParamName);
+        this.privateKey = rawPrivateKey
+                .replace(PRIVATE_KEY_START_DECORATION_LINE, "")
+                .replace(PRIVATE_KEY_END_DECORATION_LINE, "")
+                .replaceAll(PRIVATE_KEY_REXP_TO_REPLACE, "");
+
+        SCVLoggingUtil.info("com.amazonaws.kvstranscribestreaming.TranscribedSegmentWriter.constructor",
+                SCVLoggingUtil.EVENT_TYPE.TRANSCRIPTION,
+                "Using configuration from secret: " + config.getSourceSecretName(),
+                null);
     }
+
+
 
     public void sendStandardRealTimeTranscript(TranscriptEvent transcriptEvent) {
         List<Result> results = transcriptEvent.transcript().results();
@@ -138,7 +151,7 @@ public class TranscribedSegmentWriter {
             sendMessagePayload.put("content", message);
             sendMessagePayload.put("senderType", senderType);
 
-            URL url = new URL(SCRT_ENDPOINT_BASE + "/voiceCalls/" + voiceCallId + "/messages/");
+            URL url = new URL(scrtEndpointBase + "/voiceCalls/" + voiceCallId + "/messages/");
 
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("POST");
@@ -161,7 +174,7 @@ public class TranscribedSegmentWriter {
             loggingContextMap.put(SCVLoggingUtil.TRANSCRIPTION_CONTEXT_KEY.MESSAGE_ID.toString(),  messageId);
             loggingContextMap.put(SCVLoggingUtil.TRANSCRIPTION_CONTEXT_KEY.START_TIME.toString(), String.valueOf(startTime));
             loggingContextMap.put(SCVLoggingUtil.TRANSCRIPTION_CONTEXT_KEY.END_TIME.toString(), String.valueOf(endTime));
-            loggingContextMap.put(SCVLoggingUtil.TRANSCRIPTION_CONTEXT_KEY.END_POINT.toString(),  SCRT_ENDPOINT_BASE + "/voiceCalls/" + voiceCallId + "/messages/");
+            loggingContextMap.put(SCVLoggingUtil.TRANSCRIPTION_CONTEXT_KEY.END_POINT.toString(),  scrtEndpointBase + "/voiceCalls/" + voiceCallId + "/messages/");
             SCVLoggingUtil.info("com.amazonaws.kvstranscribestreaming.sendMessage", SCVLoggingUtil.EVENT_TYPE.TRANSCRIPTION, con.getResponseMessage(), loggingContextMap);
 
             if (code == 429) {
@@ -192,39 +205,25 @@ public class TranscribedSegmentWriter {
      private String getJWTToken() throws NoSuchAlgorithmException, InvalidKeySpecException {
         SCVLoggingUtil.info("com.amazonaws.kvstranscribestreaming.getJWTToken", SCVLoggingUtil.EVENT_TYPE.PERFORMANCE, "START Get JWT Token", null);
         try {
-            // if JWT Token exist, verify if it is valid
             if (this.jwtToken != null && this.jwtToken.length() > 0 ) {
-                // validate if JWT token is valid or not. if it is valid, reuse existing token
-                Claims claims = Jwts.parser().setSigningKey(privKeyObject).build().parseSignedClaims(jwtToken).getPayload();
-                if (!claims.isEmpty())
+                String[] tokenParts = this.jwtToken.split("\\.");
+                if (tokenParts.length == 3) {
                     return this.jwtToken;
+                }
             }
         } catch (Exception e) {
-            // skip: go next block of code and regenerate token
             SCVLoggingUtil.error("com.amazonaws.kvstranscribestreaming.getJWTToken", SCVLoggingUtil.EVENT_TYPE.TRANSCRIPTION, e.getMessage(), null);
         }
-
-        // get private key from AWS SSM system
-        AWSSimpleSystemsManagement client = AWSSimpleSystemsManagementClientBuilder.defaultClient();
-        GetParameterRequest getparameterRequest = new GetParameterRequest().withName(PRIVATE_KEY_PARAM_NAME).withWithDecryption(true);
-        GetParameterResult result = client.getParameter(getparameterRequest);
-        String privateKey = result.getParameter().getValue();
-        privateKey = privateKey.replace(PRIVATE_KEY_START_DECORATION_LINE, "");
-        privateKey = privateKey.replace(PRIVATE_KEY_END_DECORATION_LINE, "");
-        privateKey = privateKey.replaceAll(PRIVATE_KEY_REXP_TO_REPLACE, "");
-
-        // generate private key object and set to this.privKeyObject
         Security.addProvider(new BouncyCastleProvider());
         PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(privateKey));
         KeyFactory kf = KeyFactory.getInstance("RSA");
         this.privKeyObject = kf.generatePrivate(keySpec);
 
-        // generate JWT token which will be used for authentication and set to this.jwtToken
         Instant now = Instant.now();
-        this.jwtToken = Jwts.builder().setAudience(AUDIENCE).setIssuedAt(Date.from(now))
-                .setExpiration(Date.from(now.plus(5L, ChronoUnit.MINUTES))).setIssuer(SALESFORCE_ORG_ID)
-                .setSubject(CALL_CENTER_API_NAME).setId(UUID.randomUUID().toString())
-                .signWith(SignatureAlgorithm.RS256, privKeyObject).compact();
+        this.jwtToken = Jwts.builder().audience().add(AUDIENCE).and().issuedAt(Date.from(now))
+                .expiration(Date.from(now.plus(5L, ChronoUnit.MINUTES))).issuer(salesforceOrgId)
+                .subject(callCenterApiName).id(UUID.randomUUID().toString())
+                .signWith(privKeyObject).compact();
 
         SCVLoggingUtil.info("com.amazonaws.kvstranscribestreaming.getJWTToken", SCVLoggingUtil.EVENT_TYPE.PERFORMANCE, "END Get JWT Token", null);
         return this.jwtToken;

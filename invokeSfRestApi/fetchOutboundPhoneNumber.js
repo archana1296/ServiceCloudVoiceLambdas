@@ -1,6 +1,6 @@
-const config = require("./config");
 const queryEngine = require("./queryEngine");
 const SCVLoggingUtil = require("./SCVLoggingUtil");
+const secretUtils = require("./secretUtils");
 
 function getAgentARN(event) {
   if (event.Details.Parameters.agentARN) {
@@ -10,7 +10,7 @@ function getAgentARN(event) {
   }
 }
 
-async function fetchOutboundPhoneNumber(event) {
+async function fetchOutboundPhoneNumber(event, secretName, accessTokenSecretName) {
   const agentARN = getAgentARN(event);
   if (!agentARN) {
     SCVLoggingUtil.error({
@@ -22,7 +22,7 @@ async function fetchOutboundPhoneNumber(event) {
     };
   }
 
-  const outboundPhoneNumber = await getMessagingPlatformKey(agentARN);
+  const outboundPhoneNumber = await getMessagingPlatformKey(agentARN, secretName, accessTokenSecretName);
   if (!outboundPhoneNumber) {
     SCVLoggingUtil.error({
       message: "Couldn't find outbound phone number from messaging channel.",
@@ -50,7 +50,8 @@ function getSerializableError(error) {
   return error;
 }
 
-async function getMessagingPlatformKey(agentARN) {
+async function getMessagingPlatformKey(agentARN, secretName, accessTokenSecretName) {
+  const configs = await secretUtils.getSecretConfigs(secretName);
   const qry = `SELECT MessagingPlatformKey
                     FROM MessagingChannel
                     WHERE MessageType='Voice'
@@ -58,7 +59,7 @@ async function getMessagingPlatformKey(agentARN) {
                       AND Id in
                           (SELECT ChannelId
                            FROM ContactCenterChannel
-                           WHERE ContactCenterChannel.ContactCenter.InternalName='${config.callCenterApiName}')
+                           WHERE ContactCenterChannel.ContactCenter.InternalName='${configs.callCenterApiName}')
                       AND SessionHandlerId in
                           (SELECT ReferenceRecordId
                            FROM CallCenterRoutingMap
@@ -70,7 +71,7 @@ async function getMessagingPlatformKey(agentARN) {
   try {
     results = await queryEngine.invokeQuery(qry, {
       methodName: "queryRecord",
-    });
+    }, secretName, accessTokenSecretName);
     if (results && results.success === false) {
       SCVLoggingUtil.error({
         message:

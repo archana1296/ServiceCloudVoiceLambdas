@@ -6,6 +6,9 @@ const axiosWrapper = require("../axiosWrapper.js");
 jest.mock("../utils");
 const utils = require("../utils.js");
 
+jest.mock("../secretUtils");
+const secretUtils = require("../secretUtils.js");
+
 const queryEngine = require("../queryEngine.js");
 const api = require("../sfRestApi.js");
 
@@ -20,6 +23,17 @@ describe("createRecord", () => {
       errors: [],
       success: true,
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -51,6 +65,17 @@ describe("createRecord", () => {
         ],
       },
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -75,6 +100,17 @@ describe("createRecord", () => {
 describe("updateRecord", () => {
   it("updates a record sucessfully using the api", async () => {
     const data = "";
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -105,6 +141,17 @@ describe("updateRecord", () => {
         ],
       },
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -142,6 +189,18 @@ describe("queryRecord", () => {
       ],
     };
 
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
+
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -156,6 +215,7 @@ describe("queryRecord", () => {
 
     expect(axiosWrapper.apiEndpoint).toHaveBeenCalledWith({
       data: undefined,
+      baseURL: "baseURLVal",
       headers: { Authorization: "Bearer test1234" },
       method: "get",
       url: "/query/?q=SELECT%20NAME%20FROM%20CONTACT%20WHERE%20NAME%20%3D%20'MARC%20BENIOFF'",
@@ -175,6 +235,17 @@ describe("queryRecord", () => {
         ],
       },
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -198,6 +269,17 @@ describe("queryRecord", () => {
       done: true,
       records: [],
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -223,6 +305,17 @@ describe("searchRecord", () => {
         },
       ],
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -235,6 +328,7 @@ describe("searchRecord", () => {
 
     expect(axiosWrapper.apiEndpoint).toHaveBeenCalledWith({
       data: undefined,
+      baseURL: "baseURLVal",
       headers: { Authorization: "Bearer test1234" },
       method: "get",
       url: "/search/?q=Find%20%7BMarc%7D%20In%20All%20Fields%20Returning%20Contact(FirstName)",
@@ -254,6 +348,17 @@ describe("searchRecord", () => {
         ],
       },
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -275,6 +380,17 @@ describe("searchRecord", () => {
     const data = {
       searchRecords: [],
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -313,6 +429,17 @@ describe("sendRealtimeAlertEvent", () => {
         ],
       },
     };
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -352,6 +479,17 @@ describe("sendRealtimeAlertEvent", () => {
       ],
     };
 
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
     );
@@ -391,8 +529,22 @@ describe("uploadTranscript", () => {
         '{"conversationBulkUploadsResults":[{"conversationIdentifier":"faaa3a21-5990-48cd-a035-e85ca8c861ff","errorDetail":null,"status":"SUCCESS","uploadId":"5a144ac1-3774-3018-896e-ccae9c86cdfc"}]}',
     };
 
+    const configs = {
+      callCenterApiName: "callCenterApiNameVal",
+      baseURL: "baseURLVal",
+      authEndpoint: "authEndpointVal",
+      consumerKey: "consumerKeyVal",
+      privateKey: "privateKeyVal",
+      audience: "audienceVal",
+      subject: "subjectVal"
+    };
+
+    secretUtils.getSecretConfigs.mockImplementationOnce(() => Promise.resolve(configs));
     utils.getAccessToken.mockImplementationOnce(() =>
       Promise.resolve("test1234")
+    );
+    secretUtils.getSecretConfigs.mockImplementationOnce(() =>
+        Promise.resolve({baseURL: "https://api.salesforce.com"})
     );
     axiosWrapper.apiEndpoint.mockImplementationOnce(() =>
       Promise.resolve({ data: data })

@@ -37,6 +37,7 @@ public class TranscriptionRequest {
     Optional<String> vocabularyFilterName = Optional.empty();
     Optional<String> vocabularyFilterMethod = Optional.empty();
     Optional<String> specialty = Optional.empty();
+    String secretName = null;
 
     public String getStreamARN() {
         return this.streamARN;
@@ -160,9 +161,17 @@ public class TranscriptionRequest {
         }
     }
 
+    public String getSecretName() {
+        return this.secretName;
+    }
+
+    public void setSecretName(String secretName) {
+        this.secretName = secretName;
+    }
+
     public String toString() {
-        return String.format("streamARN=%s, startFragmentNum=%s, voiceCallId=%s, languageCode=%s, audioStartTimestamp=%s, streamAudioFromCustomer=%s, streamAudioToCustomer=%s, engine=%s, vocabularyName=%s, vocabularyFilterName=%s, vocabularyFilterMethod=%s, specialty=%s",
-                getStreamARN(), getStartFragmentNum(), getVoiceCallId(), getLanguageCode(), getAudioStartTimestamp(), isStreamAudioFromCustomer(), isStreamAudioToCustomer(), getEngine(), getVocabularyName(), getVocabularyFilterName(), getVocabularyFilterMethod(), getSpecialty());
+        return String.format("streamARN=%s, startFragmentNum=%s, voiceCallId=%s, languageCode=%s, audioStartTimestamp=%s, streamAudioFromCustomer=%s, streamAudioToCustomer=%s, engine=%s, vocabularyName=%s, vocabularyFilterName=%s, vocabularyFilterMethod=%s, specialty=%s, secretName=%s",
+                getStreamARN(), getStartFragmentNum(), getVoiceCallId(), getLanguageCode(), getAudioStartTimestamp(), isStreamAudioFromCustomer(), isStreamAudioToCustomer(), getEngine(), getVocabularyName(), getVocabularyFilterName(), getVocabularyFilterMethod(), getSpecialty(), getSecretName());
     }
 
     public void validate() throws IllegalArgumentException {

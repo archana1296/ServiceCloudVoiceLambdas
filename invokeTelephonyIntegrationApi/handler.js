@@ -1,7 +1,9 @@
 const SCVLoggingUtil = require("./SCVLoggingUtil");
 const api = require("./telephonyIntegrationApi");
-const config = require("./config");
+const secretUtils = require("./secretUtils");
+const cacheUtils = require("./cacheUtils");
 const utils = require("./utils");
+const config = require("./config");
 
 const WEBRTC_DEFAULT = "WebRTC_Default";
 
@@ -64,16 +66,38 @@ exports.handler = async (event) => {
   let voiceCallFieldValues;
   const { methodName, fieldValues, contactId } = event.Details.Parameters;
   const contactIdValue = contactId || event.Details.ContactData.ContactId;
+  const callOrigin = event.Details.ContactData?.Attributes?.callOrigin || "";
 
-  SCVLoggingUtil.info({
+  // Extract secret name from call attributes with precedence over environment variable
+  const secretNameFromAttributes = event.Details.ContactData?.Attributes?.secretName ||  event.Details.Parameters?.fieldValues?.secretName  || null;
+  const accessSecretNameFromAttributes = event.Details.ContactData?.Attributes?.accessSecretName ||  event.Details.Parameters?.fieldValues?.accessSecretName || null;
+
+  SCVLoggingUtil.debug({
     message: `Invoke ${methodName} request with ${contactIdValue}`,
-    context: { contactId: contactIdValue, payload: voiceCallFieldValues },
+    context: {
+      contactId: contactIdValue,
+      payload: fieldValues,
+      methodName: methodName,
+      secretSource: secretNameFromAttributes ? 'callAttributes' : 'environment',
+      accessSecretSource: accessSecretNameFromAttributes ? 'callAttributes' : 'environment'
+    },
   });
+
+  // Determine the resolved secret name used (attributes takes precedence over environment)
+  const resolvedSecretName = secretNameFromAttributes || config.secretName;
+  if (!resolvedSecretName) {
+    throw new Error('Secret name not provided in call attributes or SECRET_NAME environment variable');
+  }
+
+  // Get configuration from secret with proper key resolution
+  const configData =
+    (await secretUtils.getSecretConfigs(resolvedSecretName)) || {};
+
   switch (methodName) {
     case "createVoiceCall":
       let callTypeSpecificAttributes= getCallTypeSpecificAttributes(event);
       voiceCallFieldValues = {
-        callCenterApiName: config.callCenterApiName,
+        callCenterApiName: configData.callCenterApiName,
         vendorCallKey: contactIdValue,
         to: callTypeSpecificAttributes.to,
         from: callTypeSpecificAttributes.from,
@@ -90,20 +114,23 @@ exports.handler = async (event) => {
           },
         ],
       };
-
+      if (callOrigin) {
+        voiceCallFieldValues.callOrigin = callOrigin;
+      }
       SCVLoggingUtil.debug({
         message: `Invoke ${methodName} request with ${contactIdValue}`,
         context: { contactId: contactIdValue, payload: voiceCallFieldValues },
       });
-      result = await api.createVoiceCall(voiceCallFieldValues);
+      result = await api.createVoiceCall(voiceCallFieldValues, configData);
+
       break;
     case "updateVoiceCall":
-      fieldValues.callCenterApiName = config.callCenterApiName;
-      result = await api.updateVoiceCall(contactIdValue, fieldValues);
+      fieldValues.callCenterApiName = configData.callCenterApiName;
+      result = await api.updateVoiceCall(contactIdValue, fieldValues, configData);
       break;
     case "createTransferVC":
       voiceCallFieldValues = {
-        callCenterApiName: config.callCenterApiName,
+        callCenterApiName: configData.callCenterApiName,
         vendorCallKey: contactIdValue,
         to: event.Details.ContactData.SystemEndpoint.Address,
         from: event.Details.ContactData.CustomerEndpoint.Address,
@@ -120,10 +147,13 @@ exports.handler = async (event) => {
           },
         ],
       };
+      if (callOrigin) {
+        voiceCallFieldValues.callOrigin = callOrigin;
+      }
       if (event.Details.ContactData.Queue) {
         voiceCallFieldValues.queue = event.Details.ContactData.Queue.ARN;
       }
-      result = await api.createVoiceCall(voiceCallFieldValues);
+      result = await api.createVoiceCall(voiceCallFieldValues, configData);
       break;
     case "executeOmniFlow": {
       let dialedNumberParam = fieldValues && fieldValues.dialedNumber;
@@ -141,18 +171,24 @@ exports.handler = async (event) => {
           event.Details.Parameters
         ),
       };
-      result = await api.executeOmniFlow(contactIdValue, payload);
+      result = await api.executeOmniFlow(contactIdValue, payload, configData);
       break;
     }
     case "cancelOmniFlowExecution":
-      result = await api.cancelOmniFlowExecution(contactIdValue);
+      result = await api.cancelOmniFlowExecution(contactIdValue, configData);
       break;
     case "rerouteFlowExecution":
-      result = await api.rerouteFlowExecution(contactIdValue);
+      result = await api.rerouteFlowExecution(contactIdValue, configData);
       break;
     case "sendMessage":
-      fieldValues.callCenterApiName = config.callCenterApiName;
-      result = await api.sendMessage(contactIdValue, fieldValues);
+      fieldValues.callCenterApiName = configData.callCenterApiName;
+      result = await api.sendMessage(contactIdValue, fieldValues, configData);
+      break;
+    case "callbackExecution":
+      const payload = {
+        callbackNumber: event.Details.Parameters.customerCallbackNumber
+      };
+      result = await api.callbackExecution(contactIdValue, payload, configData);
       break;
     default:
       SCVLoggingUtil.warn({
@@ -165,6 +201,28 @@ exports.handler = async (event) => {
     message: `Response received from TelephonyService with ${contactIdValue}`,
     context: { contactId: contactIdValue, payload: result },
   });
+
+  // Store contact ID mapping in S3 after VoiceCall creation (when secretName is provided in call attributes)
+  if(secretNameFromAttributes && (methodName === "createVoiceCall" || methodName === "createTransferVC")) {
+    const cacheData = {
+      contactId: contactIdValue,
+      secretName: secretNameFromAttributes,
+      timestamp: new Date().toISOString(),
+      accessSecretName: accessSecretNameFromAttributes,
+      voiceCallId: result.voiceCallId
+    };
+    await cacheUtils.storeInCache(contactIdValue, cacheData);
+
+    SCVLoggingUtil.debug({
+      message: `Cache data stored for contact ${contactIdValue}`,
+      context: {
+        contactId: contactIdValue,
+        voiceCallId: result.voiceCallId,
+        secretName: secretNameFromAttributes,
+        accessSecretName: accessSecretNameFromAttributes
+      }
+    });
+  }
 
   return result;
 };

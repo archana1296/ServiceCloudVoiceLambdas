@@ -1,0 +1,21 @@
+{
+  "name": "multiorgHandleContactEvents",
+  "version": "1.0.0",
+  "description": "",
+  "main": "handler.js",
+  "license" : "BSD-3-Clause",
+  "dependencies": {
+    "aws-sdk": "2.1354.0",
+    "winston": "3.2.1"
+  },
+  "scripts": {
+    "test": "jest --collect-coverage"
+  },
+  "devDependencies": {
+    "jest": "28.1.0"
+  },
+  "jest": {
+    "clearMocks": true,
+    "modulePaths": ["../layers/handleContactEventsFunctionLayer/nodejs/node_modules/"]
+  }
+}

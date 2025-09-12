@@ -1,22 +1,30 @@
 const axios = require("axios");
 const logger = require("axios-logger");
-const config = require("./config");
 
-const scrtEndpoint = axios.create({
-  baseURL: config.scrtEndpointBase,
+/**
+ * Create axios instance with dynamic endpoint configuration
+ * @param {object} configData - Configuration containing scrtEndpointBase
+ * @returns {object} Configured axios instance
+ */
+function getScrtEndpoint(configData) {
+  const instance = axios.create({
+    baseURL: configData.scrtEndpointBase,
 });
 
 if (process.env.LOG_LEVEL === "debug") {
-  scrtEndpoint.interceptors.request.use(
+    instance.interceptors.request.use(
     logger.requestLogger,
     logger.errorLogger
   );
-  scrtEndpoint.interceptors.response.use(
+    instance.interceptors.response.use(
     logger.responseLogger,
     logger.errorLogger
   );
 }
 
+  return instance;
+}
+
 module.exports = {
-  scrtEndpoint,
+  getScrtEndpoint,
 };

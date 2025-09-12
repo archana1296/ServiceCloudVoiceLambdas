@@ -21,8 +21,8 @@ async function fetchTranscriptFromCLFile(params, contactIdRelatedRecordMap) {
   return convTranscriptEntries;
 }
 
-async function processTranscript(awsAccountId, eventPayload) {
-  const bucketName = config.callCenterApiName.toLowerCase() + "-" + awsAccountId;
+async function processTranscript(awsAccountId, eventPayload, secretName, accessTokenSecretName) {
+  const bucketName = config.s3BucketTenantResources;
   const transcriptResults = [];
 
   const contactIdRelatedRecordMap = eventPayload.reduce((map, obj) => {
@@ -85,7 +85,9 @@ async function processTranscript(awsAccountId, eventPayload) {
           } with size ${contactIdPayloadBatch.size}`,
         });
         const result = await sfRestApi.invokeSfRestApiUploadTranscript(
-          contactIdPayloadBatch
+          contactIdPayloadBatch,
+          secretName,
+          accessTokenSecretName
         );
         transcriptResults.push(result);
         contactIdPayloadBatch = new Map();
@@ -97,7 +99,9 @@ async function processTranscript(awsAccountId, eventPayload) {
       message: `Invoking SfRestApi for last batch with size ${contactIdPayloadBatch.size}`,
     });
     const result = await sfRestApi.invokeSfRestApiUploadTranscript(
-      contactIdPayloadBatch
+      contactIdPayloadBatch,
+      secretName,
+      accessTokenSecretName
     );
     transcriptResults.push(result);
   }

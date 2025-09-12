@@ -43,17 +43,29 @@ jest.mock('aws-sdk', () => {
               promise: jest.fn().mockResolvedValue(describeContactResponse),
             })),
           })),
+        SecretsManager: jest.fn(() => ({
+          getSecretValue: jest.fn(() => ({
+            promise: jest.fn().mockResolvedValue({
+              SecretString: JSON.stringify({
+                SALESFORCE_ORG_ID: 'test-org-id',
+                SCRT_ENDPOINT_BASE: 'https://test-scrt.com',
+                CALL_CENTER_API_NAME: 'test-api',
+                'test-api-scrt-jwt-auth-private-key': 'test-private-key'
+              })
+            })
+          }))
+        }))
     }
 });
 
-afterEach(() => {    
+afterEach(() => {
   jest.clearAllMocks();
 });
 
 describe('Post Call Analysis Trigger Lambda handler', () => {
     /*
     Sample Contact Lens Post-call Analysis File Payload
-    
+
     {
         "Version": "1.1.0",
         "AccountId": "670991668472",
@@ -216,8 +228,8 @@ describe('Post Call Analysis Trigger Lambda handler', () => {
     api.persistSignals.mockImplementationOnce(() => Promise.resolve(expectedResponse));
     await handler.handler(event);
     expect(handler.getOverallBatchCount()).toBe(handler.getCurrentBatchCount());
-  });     
-  
+  });
+
   it('successfully triggers post-call JSON file analysis', async () => {
     const event = {
       version: "0",

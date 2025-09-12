@@ -21,7 +21,9 @@ Resources:
         Statement:
           - Effect: Allow
             Action:
-              - ssm:*
+              - ssm:GetParameter*
+              - ssm:PutParameter
+              - ssm:DeleteParameter*
             Resource:
               - !Join ["",[!Sub 'arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:parameter/','*-salesforce-*']]
               - !Join ["",[!Sub 'arn:${AWS::Partition}:ssm:*:${AWS::AccountId}:parameter/','*-scrt-jwt-auth-private-key']]
@@ -216,6 +218,23 @@ Resources:
       Description: Policy to access Salesforce owned Keys
       ManagedPolicyName: !If [UseResellCondition, "AmazonConnectAccessPolicy", !Sub "SCVAmazonConnectAccessPolicy"]
       Path: /scv/
+  SecretsManagerManagedPolicyResource:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - secretsmanager:GetSecretValue
+              - secretsmanager:DescribeSecret
+              - secretsmanager:UpdateSecret
+              - secretsmanager:CreateSecret
+            Resource:
+              - !Join ["",[!Sub 'arn:${AWS::Partition}:secretsmanager:*:${AWS::AccountId}:secret:','*-salesforce-*']]
+      Description: Policy to access Salesforce secrets in AWS Secrets Manager and SSM parameters
+      ManagedPolicyName: !If [UseResellCondition, "SecretsManagerAccessPolicy", !Sub "SCVSecretsManagerAccessPolicy"]
+      Path: /scv/
 
 Outputs:
   SSMManagedPolicyResource:
@@ -236,4 +255,6 @@ Outputs:
   AmazonConnectManagedPolicyResource:
     Description: Policy to access integrated Connect Instance with Salesforce
     Value: !Ref AmazonConnectManagedPolicyResource
-
+  SecretsManagerManagedPolicyResource:
+    Description: Policy to access Salesforce secrets in AWS Secrets Manager and SSM parameters
+    Value: !Ref SecretsManagerManagedPolicyResource

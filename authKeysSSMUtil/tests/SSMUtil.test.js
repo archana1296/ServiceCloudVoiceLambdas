@@ -2,10 +2,29 @@ const handler = require('../index');
 
 jest.mock('aws-sdk');
 jest.mock('selfsigned');
-jest.mock('aws-param-store');
+jest.mock('../secretUtils');
+jest.mock('../SCVLoggingUtil');
+
+// Mock the config module
+jest.mock('../config', () => ({
+  logLevel: 'info',
+  secretName: 'test-secret-name'
+}));
+
 const selfsigned = require("selfsigned");
+const { readSecret, writeSecret } = require('../secretUtils');
+
+// Mock environment variable
+process.env.SECRET_NAME = 'test-secret-name';
+process.env.LOG_LEVEL = 'info';
 
 describe('SSMUtil Tests', () => {
+    beforeEach(() => {
+        jest.clearAllMocks();
+        readSecret.mockResolvedValue({});
+        writeSecret.mockResolvedValue();
+    });
+
     it('Sample SSMUtil tests', () => {
         expect(handler.hasOwnProperty('handler')).toEqual(true);
     });
@@ -44,9 +63,14 @@ describe('SSMUtil Tests', () => {
         const ssmParamName = event.ResourceProperties.Parameters.Details.SSMParamName;
         const expectedResponse = {
             Success: true,
-            Message: `The SSM parameter ${ssmParamName} is put successfully.`,
+            Message: `The secret parameter ${ssmParamName} is stored successfully.`,
         };
-        expect(await handler.handler(event)).toMatchObject(expectedResponse);
+        const result = await handler.handler(event);
+        expect(result).toMatchObject(expectedResponse);
+        expect(readSecret).toHaveBeenCalledWith('test-secret-name');
+        expect(writeSecret).toHaveBeenCalledWith('test-secret-name', {
+            'testSSMParamName': 'testSSMParamValue'
+        });
     });
 
     it("Test GeneratePrivatePublicKeyPair operation", async () => {
@@ -73,6 +97,138 @@ describe('SSMUtil Tests', () => {
             Success: true,
             Certificate: pems.cert
         };
-        await expect(await handler.handler(event)).toMatchObject(expectedResponse);
+
+        const result = await handler.handler(event);
+        expect(result).toMatchObject(expectedResponse);
+        expect(readSecret).toHaveBeenCalledWith('test-secret-name');
+        expect(writeSecret).toHaveBeenCalledWith('test-secret-name', {
+            'testSSMParamName': 'testPrivate'
+        });
+    });
+
+    it("Test updating existing secret with additional parameters", async () => {
+        const existingSecretData = {
+            'existingParam': 'existingValue'
+        };
+        readSecret.mockResolvedValue(existingSecretData)
+
+        const event = {
+            ResourceProperties: {
+                Parameters: {
+                    RequestType: "CreateSSMParameter",
+                    Details: {
+                        SSMParamName: "newParam",
+                        SSMParamValue: "newValue"
+                    }
+                }
+            }
+        };
+
+        await handler.handler(event);
+        expect(writeSecret).toHaveBeenCalledWith('test-secret-name', {
+            'existingParam': 'existingValue',
+            'newParam': 'newValue'
+        });
+    });
+
+    it("Test error when SECRET_NAME is not set", async () => {
+        // Mock the config to return undefined secretName
+        jest.doMock('../config', () => ({
+            logLevel: 'info',
+            secretName: undefined
+        }));
+
+        // Re-require the handler to pick up the new config
+        jest.resetModules();
+        const handlerWithoutSecret = require('../index');
+
+        const event = {
+            ResourceProperties: {
+                Parameters: {
+                    RequestType: "CreateSSMParameter",
+                    Details: {
+                        SSMParamName: "testParam",
+                        SSMParamValue: "testValue"
+                    }
+                }
+            }
+        };
+
+        await expect(handlerWithoutSecret.handler(event)).rejects.toThrow('SECRET_NAME configuration is not set');
+    });
+
+    it("Test error when SECRET_NAME is empty string", async () => {
+        // Mock the config to return empty secretName
+        jest.doMock('../config', () => ({
+            logLevel: 'info',
+            secretName: ''
+        }));
+
+        // Mock selfsigned for this test
+        const mockSelfsigned = {
+            generate: jest.fn().mockReturnValue({
+                private: 'test-private',
+                cert: 'test-cert'
+            })
+        };
+        jest.doMock('selfsigned', () => mockSelfsigned);
+
+        // Re-require the handler to pick up the new config
+        jest.resetModules();
+        const handlerWithoutSecret = require('../index');
+
+        const event = {
+            ResourceProperties: {
+                Parameters: {
+                    RequestType: "GeneratePrivatePublicKeyPair",
+                    Details: {
+                        SSMParamName: "testParam",
+                        OrganizationalUnitName: "testOrg",
+                        ExpiresIn: 30
+                    }
+                }
+            }
+        };
+
+        await expect(handlerWithoutSecret.handler(event)).rejects.toThrow('SECRET_NAME configuration is not set');
+    });
+
+    it("Test error handling when readSecret fails", async () => {
+        const readError = new Error('Failed to read secret');
+        readSecret.mockRejectedValue(readError);
+
+        const event = {
+            ResourceProperties: {
+                Parameters: {
+                    RequestType: "CreateSSMParameter",
+                    Details: {
+                        SSMParamName: "testParam",
+                        SSMParamValue: "testValue"
+                    }
+                }
+            }
+        };
+
+        await expect(handler.handler(event)).rejects.toThrow('Failed to read secret');
+    });
+
+    it("Test error handling when writeSecret fails", async () => {
+        readSecret.mockResolvedValue({});
+        const writeError = new Error('Failed to write secret');
+        writeSecret.mockRejectedValue(writeError);
+
+        const event = {
+            ResourceProperties: {
+                Parameters: {
+                    RequestType: "CreateSSMParameter",
+                    Details: {
+                        SSMParamName: "testParam",
+                        SSMParamValue: "testValue"
+                    }
+                }
+            }
+        };
+
+        await expect(handler.handler(event)).rejects.toThrow('Failed to write secret');
     });
 });

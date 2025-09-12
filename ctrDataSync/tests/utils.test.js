@@ -98,6 +98,136 @@ describe('transformCTR', () => {
     it('should transform raw CTR data with initiationMethod API to voicecall with initiationMethod INBOUND like JSON', () => {
         expect(actual3).toStrictEqual(expected3);
     });
+
+    let input4 = {
+        "ContactId":"1e67e495-edea-488e-b7cf-359e2f4ebfc1",
+        "DisconnectReason": null,
+        "InitiationMethod":"API"
+    };
+    let expected4 = {
+        "contactId":"1e67e495-edea-488e-b7cf-359e2f4ebfc1",
+        "fields":{
+            "initiationMethod":"INBOUND",
+            "callSubType": "PSTN",
+            "disconnectReason": {
+                "value": "UNKNOWN",
+                "isError": false
+            }
+        }
+    };
+    let actual4 = utils.transformCTR(input4);
+    it('should default to UNKNOWN reason for disconnect if null', () => {
+        expect(actual4).toStrictEqual(expected4);
+    });
+
+    it('should set disconnectReason to CALLBACK and isError to false when callback_flag is set', () => {
+        const input = {
+            ContactId: "cb-flag-test-1",
+            InitiationTimestamp: "2023-01-01T00:00:00Z",
+            DisconnectTimestamp: "2023-01-01T00:05:00Z",
+            DisconnectReason: "TELECOM_PROBLEM", // would normally be isError: true
+            Attributes: {
+                callback_flag: true,
+                "sfdc-TestField": "testValue"
+            },
+            Agent: {
+                ConnectedToAgentTimestamp: "2023-01-01T00:00:30Z",
+                CustomerHoldDuration: 20,
+                LongestHoldDuration: 10,
+                AgentInteractionDuration: 100,
+                NumberOfHolds: 2
+            },
+            Queue: {
+                EnqueueTimestamp: "2023-01-01T00:00:10Z",
+                Name: "TestQueue"
+            },
+            Recording: {
+                Location: "https://example.com/rec"
+            },
+            InitiationMethod: "CALLBACK",
+            SystemEndpoint: { Address: "+1234567890" },
+            CustomerEndpoint: { Address: "+0987654321" }
+        };
+        const expected = {
+            contactId: "cb-flag-test-1",
+            fields: {
+                startTime: "2023-01-01T00:00:00Z",
+                endTime: "2023-01-01T00:05:00Z",
+                acceptTime: "2023-01-01T00:00:30Z",
+                totalHoldDuration: 20,
+                longestHoldDuration: 10,
+                agentInteractionDuration: 100,
+                numberOfHolds: 2,
+                enqueueTime: "2023-01-01T00:00:10Z",
+                queue: "TestQueue",
+                recordingLocation: "https://example.com/rec",
+                initiationMethod: "CALLBACK",
+                fromNumber: "+1234567890",
+                toNumber: "+0987654321",
+                callSubType: "PSTN",
+                callAttributes: '{"TestField":"testValue"}',
+                disconnectReason: {
+                    value: "CALLBACK",
+                    isError: false
+                }
+            }
+        };
+        expect(utils.transformCTR(input)).toStrictEqual(expected);
+    });
+
+    it('should set disconnectReason to TELECOM_PROBLEM and isError to true when callback_flag is not present', () => {
+        const input = {
+            ContactId: "cb-flag-test-1",
+            InitiationTimestamp: "2023-01-01T00:00:00Z",
+            DisconnectTimestamp: "2023-01-01T00:05:00Z",
+            DisconnectReason: "TELECOM_PROBLEM", // would normally be isError: true
+            Attributes: {
+                "sfdc-TestField": "testValue"
+            },
+            Agent: {
+                ConnectedToAgentTimestamp: "2023-01-01T00:00:30Z",
+                CustomerHoldDuration: 20,
+                LongestHoldDuration: 10,
+                AgentInteractionDuration: 100,
+                NumberOfHolds: 2
+            },
+            Queue: {
+                EnqueueTimestamp: "2023-01-01T00:00:10Z",
+                Name: "TestQueue"
+            },
+            Recording: {
+                Location: "https://example.com/rec"
+            },
+            InitiationMethod: "CALLBACK",
+            SystemEndpoint: { Address: "+1234567890" },
+            CustomerEndpoint: { Address: "+0987654321" }
+        };
+        const expected = {
+            contactId: "cb-flag-test-1",
+            fields: {
+                startTime: "2023-01-01T00:00:00Z",
+                endTime: "2023-01-01T00:05:00Z",
+                acceptTime: "2023-01-01T00:00:30Z",
+                totalHoldDuration: 20,
+                longestHoldDuration: 10,
+                agentInteractionDuration: 100,
+                numberOfHolds: 2,
+                enqueueTime: "2023-01-01T00:00:10Z",
+                queue: "TestQueue",
+                recordingLocation: "https://example.com/rec",
+                initiationMethod: "CALLBACK",
+                fromNumber: "+1234567890",
+                toNumber: "+0987654321",
+                callSubType: "PSTN",
+                callAttributes: '{"TestField":"testValue"}',
+                disconnectReason: {
+                    value: "TELECOM_PROBLEM",
+                    isError: true
+                }
+            }
+        };
+        expect(utils.transformCTR(input)).toStrictEqual(expected);
+    });
 });
 
 describe('getCallAttributes', () => {
@@ -126,7 +256,7 @@ describe('getCallAttributes', () => {
         "sfc-field4":"field4",
         "field5":"field5"
     };
-    
+
     let expected3 = {};
     it('call attributes should be empty as none of the attributes start with sfdc-', () => {
         expect(utils.getCallAttributes(input3)).toStrictEqual(expected3);

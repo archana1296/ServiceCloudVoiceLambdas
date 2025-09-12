@@ -1,30 +1,11 @@
 const jwt = require("jsonwebtoken");
-const SSM = require("aws-sdk/clients/ssm");
 const uuid = require("uuid/v1");
 const aws = require("aws-sdk");
 const SCVLoggingUtil = require("./SCVLoggingUtil");
+const config = require("./config");
+const secretUtils = require("./secretUtils");
 
 const connect = new aws.Connect();
-
-async function getSSMParameterValue(paramName, withDecryption) {
-  return new Promise((resolve) => {
-    const ssm = new SSM();
-    const query = {
-      Names: [paramName],
-      WithDecryption: withDecryption,
-    };
-
-    ssm.getParameters(query, (err, data) => {
-      let paramValue = null;
-
-      if (!err && data && data.Parameters && data.Parameters.length) {
-        paramValue = data.Parameters[0].Value;
-      }
-
-      resolve(paramValue);
-    });
-  });
-}
 
 async function getAgentTimestamp(describeContactParams) {
   try {
@@ -51,18 +32,18 @@ async function getAgentTimestamp(describeContactParams) {
   }
 }
 
-async function generateJWT(params) {
-  const { privateKeyParamName, orgId, callCenterApiName, expiresIn } = params;
-  const privateKey = await getSSMParameterValue(privateKeyParamName, true);
+async function generateJWT() {
+  const configData = await secretUtils.getSecretConfigs(config.secretName);
   const signOptions = {
-    issuer: orgId,
-    subject: callCenterApiName,
-    expiresIn,
+    issuer: configData.salesforceOrgId,
+    subject: configData.callCenterApiName,
+    audience: config.audience,
+    expiresIn: config.tokenValidFor,
     algorithm: "RS256",
     jwtid: uuid(),
   };
 
-  return jwt.sign({}, privateKey, signOptions);
+  return jwt.sign({}, configData.privateKey, signOptions);
 }
 
 function sentimentNormalizer(sentiment) {
@@ -79,7 +60,7 @@ function sentimentNormalizer(sentiment) {
       SCVLoggingUtil.error({
         category: "Converting sentiment type into score",
         eventType: "SIGNALS",
-        message: `The postCallAnalysisTrigger Lambda function can’t convert the sentiment type ${sentiment} to a score because the type isn’t valid. Valid sentiment types are POSITIVE, NEGATIVE, MIXED, and NEUTRAL.`,
+        message: `The postCallAnalysisTrigger Lambda function can't convert the sentiment type ${sentiment} to a score because the type isn't valid. Valid sentiment types are POSITIVE, NEGATIVE, MIXED, and NEUTRAL.`,
         context: sentiment,
       });
       throw new Error(message);
@@ -108,7 +89,7 @@ function validateS3KeyName(key) {
       category: "Unsupported file directory",
       eventType: "SIGNALS",
       message:
-        "The postCallAnalysisTrigger Lambda function can’t process redacted files. Verify that the directory in the EventbBridge rule points to unredacted files only.",
+        "The postCallAnalysisTrigger Lambda function can't process redacted files. Verify that the directory in the EventbBridge rule points to unredacted files only.",
       context: key,
     });
     return false;
@@ -121,7 +102,7 @@ function validateS3KeyName(key) {
     SCVLoggingUtil.error({
       category: "Unsupported file name",
       eventType: "SIGNALS",
-      message: `The file type of the post-call analysis input file (${key}) isn’t valid. The postCallAnalysisTrigger Lambda function processes .json files only.`,
+      message: `The file type of the post-call analysis input file (${key}) isn't valid. The postCallAnalysisTrigger Lambda function processes .json files only.`,
       context: key,
     });
     return false;
@@ -133,7 +114,6 @@ function validateS3KeyName(key) {
 module.exports = {
   generateJWT,
   getAgentTimestamp,
-  getSSMParameterValue,
   sentimentNormalizer,
   sliceIntoChunks,
   validateS3KeyName,

@@ -2,11 +2,13 @@ const SCVLoggingUtil = require("./SCVLoggingUtil");
 const config = require("./config");
 const awsUtils = require("./awsUtils");
 
-async function invokeSfRestApiUploadTranscript(contactIdPayloadBatch) {
+async function invokeSfRestApiUploadTranscript(contactIdPayloadBatch, secretNameStr, accessTokenSecretNameStr) {
   const sfRestApiRequestPayload = {
     Details: {
       Parameters: {
         methodName: "uploadTranscript",
+        secretName: secretNameStr,
+        accessTokenSecretName: accessTokenSecretNameStr,
         contactIdsPayloadMap: JSON.stringify(
           Array.from(contactIdPayloadBatch.entries())
         ),
@@ -25,11 +27,13 @@ async function invokeSfRestApiUploadTranscript(contactIdPayloadBatch) {
   return await awsUtils.invokeLambdaFunction(params);
 }
 
-async function invokeSfRestApiFetchUploadIdsStatus(uploadIds) {
+async function invokeSfRestApiFetchUploadIdsStatus(uploadIds, secretNameStr, accessTokenSecretNameStr) {
   const sfRestApiRequestPayload = {
     Details: {
       Parameters: {
         methodName: "fetchUploadIdsStatus",
+        secretName: secretNameStr,
+        accessTokenSecretName: accessTokenSecretNameStr,
         uploadIds,
       },
     },

@@ -3,81 +3,20 @@ const utils = require('../utils.js');
 jest.mock('jsonwebtoken');
 const jwt = require('jsonwebtoken');
 
-jest.mock('aws-sdk/clients/ssm');
-const SSM = require('aws-sdk/clients/ssm');
-
 jest.mock('uuid/v1');
 const uuid = require('uuid');
 
-afterEach(() => {    
+afterEach(() => {
   jest.clearAllMocks();
 });
 
-describe('getSSMParameterValue', () => {
-    let originalSSMPrototype;
-
-    beforeEach(() => {
-        originalSSMPrototype = SSM.prototype;
-    });
-
-    it('should invoke SSM.prototype.getParameters() with proper arguments', () => {
-        SSM.prototype.getParameters = jest.fn();
-
-        utils.getSSMParameterValue('test_param_name', true);
-
-        expect(SSM.prototype.getParameters.mock.calls.length).toBe(1);
-        expect(SSM.prototype.getParameters.mock.calls[0][0]).toEqual({
-            Names:  [ 'test_param_name' ],
-            WithDecryption: true
-        });
-    });
-
-    it('should return a parameter value from SSM', async () => {
-        SSM.prototype.getParameters = jest.fn((query, callback) => {
-            callback.call(null, undefined, {
-                Parameters: [{ Value: 'test_param_value' }]
-            });
-        });
-
-        const paramValue = await utils.getSSMParameterValue('test_param_name', true);
-
-        expect(paramValue).toBe('test_param_value');
-    });
-
-    it('should return null if SSM parameter retrieval failed', async () => {
-        SSM.prototype.getParameters = jest.fn((query, callback) => {
-            callback.call(null, 'test_ssm_error', undefined);
-        });
-
-        const paramValue = await utils.getSSMParameterValue('test_param_name', true);
-
-        expect(paramValue).toBe(null);
-    });
-
-    afterEach(() => {
-        SSM.prototype = originalSSMPrototype;
-    });
-});
-
 describe('generateJWT', () => {
-    let originalDateGetTime;
-    let originalSSMGetParameters;
-
-    beforeEach(() => {
-        originalDateGetTime = Date.prototype.getTime;
-        originalSSMGetParameters = SSM.prototype.getParameters;
-    });
-
     it('should invoke jwt.sign() with proper arguments', async () => {
-        SSM.prototype.getParameters = jest.fn((query, callback) => {
-            callback.call(null, undefined, {
-                Parameters: [{ Value: 'test_private_key' }]
-            });
-        });
         jest.spyOn(uuid, 'v1').mockReturnValue('123456789');
+        jwt.sign.mockReturnValueOnce('test_signed_jwt');
 
-        await utils.generateJWT({
-            privateKeyParamName: 'test_param_name',
+        const result = await utils.generateJWT({
+            privateKey: 'test_private_key',
             orgId: 'test_org_id',
             callCenterApiName: 'test_call_center_api_name',
             expiresIn: 'test_expires_in'
@@ -90,17 +29,14 @@ describe('generateJWT', () => {
             algorithm:  'RS256',
             jwtid: '123456789'
         });
+        expect(result).toBe('test_signed_jwt');
     });
 
     it('should invoke jwt.sign() once', async () => {
-        SSM.prototype.getParameters = jest.fn((query, callback) => {
-            callback.call(null, undefined, {
-                Parameters: [{ Value: 'test_private_key' }]
-            });
-        });
+        jwt.sign.mockReturnValueOnce('test_signed_jwt');
 
         await utils.generateJWT({
-            privateKeyParamName: 'test_param_name',
+            privateKey: 'test_private_key',
             orgId: 'test_org_id',
             callCenterApiName: 'test_call_center_api_name',
             expiresIn: 'test_expires_in'
@@ -110,26 +46,16 @@ describe('generateJWT', () => {
     });
 
     it('should return the result of the jwt.sign() call', async () => {
-        SSM.prototype.getParameters = jest.fn((query, callback) => {
-            callback.call(null, undefined, {
-                Parameters: [{ Value: 'test_private_key' }]
-            });
-        });
         jwt.sign.mockReturnValueOnce('test_signed_jwt');
 
         const result = await utils.generateJWT({
-            privateKeyParamName: 'test_param_name',
+            privateKey: 'test_private_key',
             orgId: 'test_org_id',
             callCenterApiName: 'test_call_center_api_name',
             expiresIn: 'test_expires_in'
         });
 
         expect(result).toBe('test_signed_jwt');
-    });
-
-    afterEach(() => {
-        Date.prototype.getTime = originalDateGetTime;
-        SSM.prototype.getParameters = originalSSMGetParameters;
     });
 });
 
@@ -157,4 +83,40 @@ describe('constructFlowInputParams', () => {
     it('Parameters should be empty as none of them start with flowInput-', () => {
         expect(utils.constructFlowInputParams(input2)).toStrictEqual(expected2);
     });
-}); 
+});
+
+describe('getCallAttributes', () => {
+    it('should filter attributes that start with "sfdc-" prefix, ignore other prefix, handle case, support other characters and data types', () => {
+        const input = {
+            "sfdc-field1": "value1",
+            "other-field": "value2",
+            "sfdc-": "value2",
+            "sfdc-field-with-dash.dot": "value3",
+            "sfdc-numberField": 123,
+            "sfdc-booleanField": true,
+            "sfdc-nullField": null,
+            "sfdc-arrayField": [1, 2, 3],
+            "SfDc-field": "value4",
+        };
+        const expected = JSON.stringify({
+            "field1": "value1",
+            "": "value2",
+            "field-with-dash.dot": "value3",
+            "numberField": 123,
+            "booleanField": true,
+            "nullField": null,
+            "arrayField": [1, 2, 3]
+        });
+
+        const result = utils.getCallAttributes(input);
+        expect(result).toBe(expected);
+    });
+
+    it('should handle empty input object', () => {
+        const input = {};
+        const expected = JSON.stringify({});
+
+        const result = utils.getCallAttributes(input);
+        expect(result).toBe(expected);
+    });
+});
