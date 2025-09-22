@@ -162,9 +162,9 @@ Resources:
       - !GetAtt
         - SCVManagedPolicyStack
         - Outputs.SSMManagedPolicyResource
-        - !GetAtt
-          - SCVManagedPolicyStack
-          - Outputs.SecretsManagerManagedPolicyResource
+      - !GetAtt
+        - SCVManagedPolicyStack
+        - Outputs.SecretsManagerManagedPolicyResource
       RoleName: "SCVInvokeTelephonyIntegrationApiFunctionRole"
       Description: InvokeTelephonyIntegrationApiFunction Lambda function assumes this role to create Service cloud voice calls to invoke CreateVoiceCall API explained here https://developer.salesforce.com/docs/atlas.en-us.voice_developer_guide.meta/voice_developer_guide/voice_rest_voicecalls_create.htm
   SCVInvokeSalesforceRestApiFunctionRoleResource:
@@ -186,9 +186,9 @@ Resources:
       - !GetAtt
         - SCVManagedPolicyStack
         - Outputs.SSMManagedPolicyResource
-        - !GetAtt
-          - SCVManagedPolicyStack
-          - Outputs.SecretsManagerManagedPolicyResource
+      - !GetAtt
+        - SCVManagedPolicyStack
+        - Outputs.SecretsManagerManagedPolicyResource
       RoleName: "SCVInvokeSalesforceRestApiFunctionRole"
       Description: InvokeSalesforceRestApiFunction lambda function assumes this role to perform Salesforce REST API operations.
   SCVSSMLambdaExecutionRoleResource:
@@ -208,9 +208,9 @@ Resources:
       - !GetAtt
         - SCVManagedPolicyStack
         - Outputs.SSMManagedPolicyResource
-        - !GetAtt
-          - SCVManagedPolicyStack
-          - Outputs.SecretsManagerManagedPolicyResource
+      - !GetAtt
+        - SCVManagedPolicyStack
+        - Outputs.SecretsManagerManagedPolicyResource
       RoleName: "SCVSSMLambdaExecutionRole"
       Description: Salesforce Provisioning Service assumes this role to create "Systems Manager" -- "Parameter Store" -- "Secure String" typed parameters.
   SCVSecretConfiguratorLambdaRoleResource:
@@ -398,9 +398,9 @@ Resources:
       - !GetAtt
         - SCVManagedPolicyStack
         - Outputs.SSMManagedPolicyResource
-        - !GetAtt
-          - SCVManagedPolicyStack
-          - Outputs.SecretsManagerManagedPolicyResource
+      - !GetAtt
+        - SCVManagedPolicyStack
+        - Outputs.SecretsManagerManagedPolicyResource
       RoleName: "SCVContactLensConsumerFunctionRole"
       Description: ContactLensConsumerFunction lambda function assumes this role to enable Contact lens based Real time transcription.
   SCVAmazonConnectManagementRoleResource:
