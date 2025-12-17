@@ -67,22 +67,22 @@ exports.handler = async (event) => {
   const { methodName, fieldValues, contactId } = event.Details.Parameters;
   const contactIdValue = contactId || event.Details.ContactData.ContactId;
   const callOrigin = event.Details.ContactData?.Attributes?.callOrigin || "";
-
+  
   // Extract secret name from call attributes with precedence over environment variable
   const secretNameFromAttributes = event.Details.ContactData?.Attributes?.secretName ||  event.Details.Parameters?.fieldValues?.secretName  || null;
   const accessSecretNameFromAttributes = event.Details.ContactData?.Attributes?.accessSecretName ||  event.Details.Parameters?.fieldValues?.accessSecretName || null;
 
   SCVLoggingUtil.debug({
     message: `Invoke ${methodName} request with ${contactIdValue}`,
-    context: {
-      contactId: contactIdValue,
+    context: { 
+      contactId: contactIdValue, 
       payload: fieldValues,
       methodName: methodName,
       secretSource: secretNameFromAttributes ? 'callAttributes' : 'environment',
       accessSecretSource: accessSecretNameFromAttributes ? 'callAttributes' : 'environment'
     },
   });
-
+  
   // Determine the resolved secret name used (attributes takes precedence over environment)
   const resolvedSecretName = secretNameFromAttributes || config.secretName;
   if (!resolvedSecretName) {
@@ -122,7 +122,7 @@ exports.handler = async (event) => {
         context: { contactId: contactIdValue, payload: voiceCallFieldValues },
       });
       result = await api.createVoiceCall(voiceCallFieldValues, configData);
-
+      
       break;
     case "updateVoiceCall":
       fieldValues.callCenterApiName = configData.callCenterApiName;
@@ -147,7 +147,7 @@ exports.handler = async (event) => {
           },
         ],
       };
-      if (callOrigin) {
+      if (callOrigin) { 
         voiceCallFieldValues.callOrigin = callOrigin;
       }
       if (event.Details.ContactData.Queue) {
@@ -166,6 +166,7 @@ exports.handler = async (event) => {
       const payload = {
         flowDevName: event.Details.Parameters.flowDevName,
         fallbackQueue: event.Details.Parameters.fallbackQueue,
+        transferTarget: event.Details.Parameters.transferTarget,
         dialedNumber: dialedNumberParam,
         flowInputParameters: utils.constructFlowInputParams(
           event.Details.Parameters
@@ -189,6 +190,42 @@ exports.handler = async (event) => {
         callbackNumber: event.Details.Parameters.customerCallbackNumber
       };
       result = await api.callbackExecution(contactIdValue, payload, configData);
+      break;
+    case "routeVoiceCall":
+      const routePayload = {
+        routingTarget: event.Details.Parameters.routingTarget,
+        fallbackQueue: event.Details.Parameters.fallbackQueue,
+        flowInputParameters: utils.constructFlowInputParams(
+          event.Details.Parameters
+        ),
+      };
+      result = await api.routeVoiceCall(contactIdValue, routePayload, configData);
+      break;
+    case "updateCache":
+      const cacheData = {
+        contactId: contactIdValue,
+        secretName: secretNameFromAttributes,
+        timestamp: new Date().toISOString(),
+      };
+      const updated = await cacheUtils.storeInCache(contactIdValue, cacheData);
+      if (!updated) {
+        result = {
+          statusCode: 500,
+          message: "Failed to update cache",
+          contactId: contactIdValue
+        };
+        SCVLoggingUtil.error({
+          message: `Failed to update cache for contact ${contactIdValue}`,
+          context: { contactId: contactIdValue, payload: cacheData }
+        });
+      } 
+      else {
+        result = {
+          statusCode: 200,
+          message: "Cache updated successfully",
+          contactId: contactIdValue
+        };
+      }
       break;
     default:
       SCVLoggingUtil.warn({
