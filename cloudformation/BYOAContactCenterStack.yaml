@@ -489,7 +489,7 @@ Resources:
       Description: This lambda function that adds transcripts from Contact lens in case of failure.
 
   # Lambda Permissions, to allow Amazon Connect to invoke it
-  InvokeTelephonyIntegrationApiFunctionPermission:  
+  InvokeTelephonyIntegrationApiFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref InvokeTelephonyIntegrationApiFunction.Alias
@@ -506,7 +506,7 @@ Resources:
       Principal: connect.amazonaws.com
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
-  
+
   KvsTranscriberPermission:
     Type: AWS::Lambda::Permission
     Properties:
