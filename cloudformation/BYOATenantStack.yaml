@@ -602,7 +602,7 @@ Resources:
             Condition:
               StringEquals:
                 "aws:SecureTransport": "false"
-  
+
   TrailLogGroup:
     Type: 'AWS::Logs::LogGroup'
     Description: Log group which contains all the event data
