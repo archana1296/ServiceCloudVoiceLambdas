@@ -156,7 +156,7 @@ Resources:
     Properties:
       CodeUri:
         Bucket: !Sub "${S3BucketForScvResources}-${AWS::Region}"
-        Key: !If 
+        Key: !If
           - Multiorg
           - !Sub "${SalesforceRelease}/multiorgVoiceMailPackaging${Version}"
           - !Sub "${SalesforceRelease}/voiceMailPackaging${Version}"
@@ -165,11 +165,11 @@ Resources:
           LOG_LEVEL: "info"
           INVOKE_TELEPHONY_INTEGRATION_API_ARN: !Ref InvokeTelephonyIntegrationApiARN
           DELAY_BEFORE_ROUTING_VM_SEC: 60
-          SECRET_NAME: !If 
+          SECRET_NAME: !If
             - Multiorg
             - !Ref "AWS::NoValue"
             - !Sub "${CallCenterApiName}-salesforce-secret"
-          SECRET_CACHE_S3: !If 
+          SECRET_CACHE_S3: !If
             - Multiorg
             - !Sub "${S3BucketForTenantResources}/secret_cache"
             - !Ref "AWS::NoValue"
