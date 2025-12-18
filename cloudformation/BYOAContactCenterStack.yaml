@@ -156,7 +156,7 @@ Outputs:
 Conditions:
   UseProdCondition:
     !Equals [!Ref EnvironmentType, PRODUCTION]
-  PermissionBoundaryIsNull: 
+  PermissionBoundaryIsNull:
     !Equals [!Ref PermissionBoundaryARN, '']
   UseSourceCondition: !Or
     - !Equals [ !Ref InstanceType, "SOURCE" ]
@@ -487,7 +487,7 @@ Resources:
       Layers:
         - Ref: ContactDataSyncFunctionLayer
       Description: This lambda function that adds transcripts from Contact lens in case of failure.
-  
+
   # Lambda Permissions, to allow Amazon Connect to invoke it
   InvokeTelephonyIntegrationApiFunctionPermission:  
     Type: AWS::Lambda::Permission
@@ -507,7 +507,7 @@ Resources:
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
   
-  KvsTranscriberPermission:  
+  KvsTranscriberPermission:
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref kvsTranscriber.Alias
@@ -524,7 +524,7 @@ Resources:
       Principal: connect.amazonaws.com
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
-  
+
   KvsConsumerTriggerPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -533,7 +533,7 @@ Resources:
       Principal: connect.amazonaws.com
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
-  
+
   AuthKeysSSMUtilFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -925,7 +925,7 @@ Resources:
 
   EventRulesStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn: 
+    DependsOn:
       - HandleContactEventsFunction
       - InvokeTelephonyIntegrationApiFunction
     DeletionPolicy: Delete
@@ -1076,7 +1076,7 @@ Resources:
       Layers:
         - Ref: PostCallAnalysisTriggerFunctionLayer
       Description: This lambda function gets invoked when the call is done. 
-      
+  
   PostCallAnalysisTriggerFunctionAsyncConfig:
     Type: AWS::Lambda::EventInvokeConfig
     Properties:
@@ -1090,7 +1090,7 @@ Resources:
     Properties:
       ShardCount: 1
       Name: !Sub '${CallCenterApiName}-${AWS::AccountId}-ContactLensStream'
-  
+
   ContactLensProcessorFunctionLayer:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
@@ -1124,7 +1124,7 @@ Resources:
       Layers:
         - Ref: ContactLensProcessorFunctionLayer
       Description: This Lambda function process the transcripts and sends them to salesforce. This gets invoked by contactlensconsumer lambda function
-  
+
   ContactLensConsumerFunctionLayer:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
