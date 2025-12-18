@@ -67,7 +67,7 @@ exports.handler = async (event) => {
   const { methodName, fieldValues, contactId } = event.Details.Parameters;
   const contactIdValue = contactId || event.Details.ContactData.ContactId;
   const callOrigin = event.Details.ContactData?.Attributes?.callOrigin || "";
-  
+
   // Extract secret name from call attributes with precedence over environment variable
   const secretNameFromAttributes = event.Details.ContactData?.Attributes?.secretName ||  event.Details.Parameters?.fieldValues?.secretName  || null;
   const accessSecretNameFromAttributes = event.Details.ContactData?.Attributes?.accessSecretName ||  event.Details.Parameters?.fieldValues?.accessSecretName || null;
