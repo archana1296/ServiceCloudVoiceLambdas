@@ -74,15 +74,15 @@ exports.handler = async (event) => {
 
   SCVLoggingUtil.debug({
     message: `Invoke ${methodName} request with ${contactIdValue}`,
-    context: { 
-      contactId: contactIdValue, 
+    context: {
+      contactId: contactIdValue,
       payload: fieldValues,
       methodName: methodName,
       secretSource: secretNameFromAttributes ? 'callAttributes' : 'environment',
       accessSecretSource: accessSecretNameFromAttributes ? 'callAttributes' : 'environment'
     },
   });
-  
+
   // Determine the resolved secret name used (attributes takes precedence over environment)
   const resolvedSecretName = secretNameFromAttributes || config.secretName;
   if (!resolvedSecretName) {
@@ -122,7 +122,7 @@ exports.handler = async (event) => {
         context: { contactId: contactIdValue, payload: voiceCallFieldValues },
       });
       result = await api.createVoiceCall(voiceCallFieldValues, configData);
-      
+
       break;
     case "updateVoiceCall":
       fieldValues.callCenterApiName = configData.callCenterApiName;
@@ -147,7 +147,7 @@ exports.handler = async (event) => {
           },
         ],
       };
-      if (callOrigin) { 
+      if (callOrigin) {
         voiceCallFieldValues.callOrigin = callOrigin;
       }
       if (event.Details.ContactData.Queue) {
