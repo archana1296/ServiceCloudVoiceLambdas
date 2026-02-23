@@ -227,6 +227,19 @@ exports.handler = async (event) => {
         };
       }
       break;
+    case "getJwtToken":
+      const jwt = await utils.generateJWT({
+        orgId: configData.orgId,
+        callCenterApiName: configData.callCenterApiName,
+        expiresIn: configData.tokenValidFor,
+        privateKey: configData.privateKey,
+      });
+      result = {
+        statusCode: 200,
+        message: "JWT token generated successfully",
+        token: jwt,
+      };
+      break;
     default:
       SCVLoggingUtil.warn({
         message: `Unsupported method ${methodName}`,
