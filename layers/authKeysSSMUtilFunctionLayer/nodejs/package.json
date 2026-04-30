@@ -5,6 +5,6 @@
   "main": "",
   "dependencies": {
     "aws-param-store": "3.2.0",
-    "selfsigned": "2.0.1"
+    "selfsigned": "2.4.1"
   }
 }

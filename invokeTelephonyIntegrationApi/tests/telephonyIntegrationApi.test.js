@@ -84,7 +84,7 @@ describe('telephonyIntegrationApi', () => {
     });
 
     it('should handle error when creating voice call', async () => {
-      const mockError = new Error('API Error');
+      const mockError = new Error('API Error');      
       utils.generateJWT.mockResolvedValue('test-jwt-token');
       mockPost.mockRejectedValue(mockError);
 
@@ -515,6 +515,26 @@ describe('telephonyIntegrationApi', () => {
       expect(mockPost).toHaveBeenCalledWith(
         `/voiceCalls/${contactId}/requestCallback`,
         differentPayload,
+        { headers: buildAuthHeaders() }
+      );
+      expect(result).toEqual(expectedResponse);
+    });
+
+    it('should execute callback with scheduled date time', async () => {
+      const payloadWithScheduledDateTime = {
+        ...payload,
+        scheduledRoutingDateTime: '2026-02-02T10:00:00Z'
+      };
+      const expectedResponse = { callbackId: 'callback-id' };
+      const mockAxiosResponse = { data: expectedResponse };
+      utils.generateJWT.mockResolvedValue('test-jwt-token');
+      mockPost.mockResolvedValue(mockAxiosResponse);
+
+      const result = await api.callbackExecution(contactId, payloadWithScheduledDateTime, mockConfigData);
+
+      expect(mockPost).toHaveBeenCalledWith(
+        `/voiceCalls/${contactId}/requestCallback`,
+        payloadWithScheduledDateTime,
         { headers: buildAuthHeaders() }
       );
       expect(result).toEqual(expectedResponse);

@@ -95,7 +95,8 @@ function transformCTR(ctr) {
     setCallSubtype(ctr, voiceCall);
   }
 
-  if (ctr.Recording) {
+  // Update recording only for Human Agent leg
+  if (ctr.Agent?.AgentInteractionDuration > 0 && ctr.Recording?.Location) {
     voiceCall.recordingLocation = ctr.Recording.Location;
   }
 
