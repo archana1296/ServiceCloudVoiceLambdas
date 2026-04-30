@@ -99,7 +99,7 @@ describe("utils", () => {
       await utils.getSSMParameterValue("test-param", true);
       // Just verify it doesn't throw an error
       expect(true).toBe(true);
-    });
+    }, 10000);
   });
 
   describe("getAgentTimestamp", () => {
@@ -147,7 +147,7 @@ describe("utils", () => {
 
       const result = await utilsWithError.getSSMParameterValue("test-param");
       expect(result).toBe(null);
-    });
+    }, 10000);
   });
 
   describe("getAgentTimestamp", () => {

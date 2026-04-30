@@ -1,7 +1,7 @@
 {
-  "name": "contactLensConsumerFunctionLayer",
+  "name": "invokeVfsIntegrationApiFunctionLayer",
   "version": "1.0.0",
-  "description": "The package dependencies required by the contactLensConsumer Lambda function.",
+  "description": "The package dependencies required by the invokeVfsIntegrationApi Lambda function.",
   "main": "",
   "dependencies": {
     "aws-sdk": "2.1354.0",

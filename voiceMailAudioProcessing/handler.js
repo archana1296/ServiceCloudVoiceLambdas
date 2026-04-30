@@ -84,6 +84,7 @@ exports.handler = async (event) => {
     let shouldProcessKvs = true;
     let currentTagName = "";
     let currentFragment = BigInt(0);
+    streamFinished = false;
 
     // Increment record counter
     totalRecordCount += 1;
@@ -236,6 +237,14 @@ exports.handler = async (event) => {
                 if (currentFragment > stopFragmentNum) {
                   SCVLoggingUtil.info({
                     message: `KVS processing completed for chunk [currentFragment: ${currentFragment}, stopFragmentNum: ${stopFragmentNum}].`,
+                    context: { contactId: currentContactID },
+                  });
+                  shouldProcessKvs = false;
+                }
+              } else if (currentTagName === "ContactId") {
+                if (value !== currentContactID) {
+                  SCVLoggingUtil.info({
+                    message: `KVS processing stopped: ContactId boundary crossed [streamContactId: ${value}, expectedContactId: ${currentContactID}].`,
                     context: { contactId: currentContactID },
                   });
                   shouldProcessKvs = false;
