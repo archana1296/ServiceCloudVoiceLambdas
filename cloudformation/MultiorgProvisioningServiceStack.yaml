@@ -6,7 +6,7 @@ Parameters:
     Type: String
     Default: scvMultiorg
     Description: Prefix for Lambda function names
-
+  
   S3BucketForScvResources:
     Type: String
     Description: The S3 bucket that stores SCV resources, like Lambda functions
@@ -58,7 +58,7 @@ Resources:
               - s3:ListAllMyBuckets
               - s3:PutObject
               - s3:PutObjectTagging
-            Resource:
+            Resource: 
               - !Sub "arn:${AWS::Partition}:s3:::${S3BucketForTenantResources}"
               - !Sub "arn:${AWS::Partition}:s3:::${S3BucketForTenantResources}/*"
       Description: Policy to allow Lambda to read S3 objects
@@ -85,8 +85,30 @@ Resources:
         - !Sub "arn:aws:iam::${AWS::AccountId}:policy/scv/SCVSecretsManagerAccessPolicy"
         - !Ref LambdaS3AccessPolicyResource
       RoleName: !Sub "${lambdaPrefix}-InvokeTelephonyIntegrationApiFunctionRole"
-      Description: InvokeTelephonyIntegrationApiFunction Lambda function assumes this role to create Service cloud voice calls to invoke CreateVoiceCall API explained here https://developer.salesforce.com/docs/atlas.en-us.voice_developer_guide.meta/voice_developer_guide/voice_rest_voicecalls_create.htm
-
+      Description: Creates VoiceCall records via Salesforce Telephony API
+  
+  MultiorgInvokeVfsIntegrationApiFunctionRoleResource:
+    Type: AWS::IAM::Role
+    Properties:
+      PermissionsBoundary:
+        !If [PermissionBoundaryIsNull, !Ref "AWS::NoValue", !Ref PermissionBoundaryARN]
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - !Sub "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+        - !Sub "arn:aws:iam::${AWS::AccountId}:policy/scv/SCVSSMAccessPolicy"
+        - !Sub "arn:aws:iam::${AWS::AccountId}:policy/scv/SCVSecretsManagerAccessPolicy"
+        - !Ref LambdaS3AccessPolicyResource
+      RoleName: !Sub "${lambdaPrefix}-InvokeVfsIntegrationApiFunctionRole"
+      Description: Retrieves voicemail recording URLs via VFS API
+  
   MultiorgContactDataSyncFunctionRoleResource:
     Type: AWS::IAM::Role
     Properties:
@@ -117,7 +139,7 @@ Resources:
                   - "*"
                 Effect: Allow
       RoleName: !Sub "${lambdaPrefix}-ContactDataSyncFunctionRole"
-      Description: Contact Data sync Lambda function assumes this role to invoke backfill transcripts from Contact lens.
+      Description: Backfills Contact Lens transcripts
 
   MultiorgPostCallAnalysisTriggerFunctionRoleResource:
     Type: AWS::IAM::Role
@@ -151,7 +173,7 @@ Resources:
                   - "*"
                 Effect: Allow
       RoleName: !Sub "${lambdaPrefix}-PostCallAnalysisTriggerFunctionRole"
-      Description: PostCallAnalysisTriggerFunction Lambda function assumes this role to send analytics events once voice call ends to persist contact lens generated intelligence signals.
+      Description: Sends post-call analytics events
 
   MultiorgInvokeSalesforceRestApiFunctionRoleResource:
     Type: AWS::IAM::Role
@@ -173,7 +195,7 @@ Resources:
         - !Ref LambdaS3AccessPolicyResource
         - !Sub "arn:aws:iam::${AWS::AccountId}:policy/scv/SCVSecretsManagerAccessPolicy"
       RoleName: !Sub "${lambdaPrefix}-InvokeSalesforceRestApiFunctionRole"
-      Description: InvokeSalesforceRestApiFunction lambda function assumes this role to perform Salesforce REST API operations.
+      Description: Invokes Salesforce REST API
 
   MultiorgKvsTranscriberRoleResource:
     Type: AWS::IAM::Role
@@ -219,7 +241,7 @@ Resources:
                   - "transcribe:StartMedicalStreamTranscription"
                   - "transcribe:StartTranscriptionJob"
                   - "transcribe:StartMedicalTranscriptionJob"
-                Resource:
+                Resource: 
                   - "*"
               - Effect: "Allow"
                 Action:
@@ -233,7 +255,7 @@ Resources:
                 Resource:
                   - "*"
       RoleName: !Sub "${lambdaPrefix}-KvsTranscriberRole"
-      Description: KvsTranscriber lambda function (AWS Transcribe service based transcription purpose lambda) assumes this role to send transcription data based on the amazon connect's video stream.
+      Description: Performs real-time transcription
 
   MultiorgKvsConsumerTriggerRoleResource:
     Type: AWS::IAM::Role
@@ -256,7 +278,7 @@ Resources:
         - !Ref LambdaS3AccessPolicyResource
         - !Sub "arn:aws:iam::${AWS::AccountId}:policy/scv/SCVSecretsManagerAccessPolicy"
       RoleName: !Sub "${lambdaPrefix}-KvsConsumerTriggerRole"
-      Description: KvsConsumerTrigger Lambda function triggers the MultiorgKvsTranscriber to invoke and process Kinesis Video stream.
+      Description: Initiates real-time transcription
 
   MultiorgContactLensConsumerFunctionRoleResource:
     Type: AWS::IAM::Role
@@ -265,7 +287,7 @@ Resources:
         !If [PermissionBoundaryIsNull, !Ref "AWS::NoValue", !Ref PermissionBoundaryARN]
       AssumeRolePolicyDocument:
         Version: "2012-10-17"
-        Statement:
+        Statement:  
           - Effect: "Allow"
             Principal:
               Service:
@@ -283,7 +305,7 @@ Resources:
         - !Ref LambdaS3AccessPolicyResource
         - !Sub "arn:aws:iam::${AWS::AccountId}:policy/scv/SCVSecretsManagerAccessPolicy"
       RoleName: !Sub "${lambdaPrefix}-ContactLensConsumerFunctionRole"
-      Description: ContactLensConsumerFunction lambda function assumes this role to enable Contact lens based Real time transcription.
+      Description: Consumes Contact Lens transcription stream
 
   MultiorgVoiceMailAudioProcessingRoleResource:
     Type: AWS::IAM::Role
@@ -317,7 +339,7 @@ Resources:
                   - "*"
                 Effect: Allow
       RoleName: !Sub "${lambdaPrefix}-VoiceMailAudioProcessingRole"
-      Description: VoiceMailAudioProcessing lambda function assumes this role to process CTR Kinesis Data stream to capture audio recording files recorded as part of the customer's voice mail.
+      Description: Processes voicemail audio from CTR stream
 
   MultiorgVoiceMailPackagingRoleResource:
     Type: AWS::IAM::Role
@@ -357,7 +379,7 @@ Resources:
                   - "*"
                 Effect: Allow
       RoleName: !Sub "${lambdaPrefix}-VoiceMailPackagingRole"
-      Description: VoiceMailPackagingFunction lambda function assumes this role to call CTR and execute OmniFlow API to enable VoiceMail functionality.
+      Description: Packages voicemail for delivery
 
   MultiorgVoiceMailTranscribeRoleResource:
     Type: AWS::IAM::Role
@@ -409,7 +431,7 @@ Resources:
                   - "*"
                 Effect: Allow
       RoleName: !Sub "${lambdaPrefix}-VoiceMailTranscribeRole"
-      Description: VoiceMailTranscribeFunction lambda function assumes this role to process audio recording files to produce voice mail transcription.
+      Description: Transcribes voicemail audio
 
   MultiorgHandleContactEventsRoleResource:
     Type: AWS::IAM::Role
@@ -474,6 +496,17 @@ Resources:
       Description: MultiorgInvokeTelephonyIntegrationApiFunction node modules
       LayerName: !Sub '${lambdaPrefix}-MultiorgInvokeTelephonyIntegrationApiFunctionLayer'
 
+  MultiorgInvokeVfsIntegrationApiFunctionLayer:
+    Type: 'AWS::Lambda::LayerVersion'
+    Properties:
+      CompatibleRuntimes:
+        - nodejs22.x
+      Content:
+        S3Bucket:  !Sub '${S3BucketForScvResources}-${AWS::Region}'
+        S3Key: !Sub '${SalesforceRelease}/invokeVfsIntegrationApiFunctionLayer${Version}'
+      Description: MultiorgInvokeVfsIntegrationApiFunction node modules
+      LayerName: !Sub '${lambdaPrefix}-MultiorgInvokeVfsIntegrationApiFunctionLayer'
+
   MultiorgHandleContactEventsFunctionLayer:
     Type: AWS::Lambda::LayerVersion
     Properties:
@@ -528,7 +561,7 @@ Resources:
         S3Key: !Sub '${SalesforceRelease}/contactLensConsumerFunctionLayer${Version}'
       Description: ContactLensConsumerFunction node modules
       LayerName: !Sub '${lambdaPrefix}-MultiorgContactLensConsumerFunctionLayer'
-
+  
   MultiorgInvokeSalesforceRestApiFunctionLayer:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
@@ -581,7 +614,7 @@ Resources:
           APP_REGION: !Ref "AWS::Region"
           START_SELECTOR_TYPE: "NOW"
       FunctionName: !Sub "${lambdaPrefix}-MultiorgkvsTranscriber"
-      Description: This Lambda function does the actual real-time transcription work. This function is not directly invoked from a contact flow.
+      Description: Performs real-time transcription work
 
   MultiorgKvsConsumerTrigger:
     Type: AWS::Serverless::Function
@@ -603,7 +636,7 @@ Resources:
       FunctionName: !Sub "${lambdaPrefix}-MultiorgKvsConsumerTrigger"
       Layers:
         - !Ref MultiorgKVSConsumerTriggerFunctionLayer
-      Description: This Lambda function is the initiation point for starting real-time transcription.
+      Description: Initiates real-time transcription
 
   MultiorgInvokeTelephonyIntegrationApiFunction:
     Type: AWS::Serverless::Function
@@ -624,8 +657,29 @@ Resources:
       FunctionName: !Sub "${lambdaPrefix}-MultiorgInvokeTelephonyIntegrationApiFunction"
       Layers:
         - !Ref MultiorgInvokeTelephonyIntegrationApiFunctionLayer
-      Description: This Lambda function either puts the VoiceCall records or executes the omni channel flow and returns the agent or queue routing instruction to contact flow
+      Description: Creates VoiceCall records and handles OmniChannel routing
 
+  MultiorgInvokeVfsIntegrationApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri:
+        Bucket: !Sub "${S3BucketForScvResources}-${AWS::Region}"
+        Key: !Sub "${SalesforceRelease}/invokeVfsIntegrationApi${Version}"
+      Environment:
+        Variables:
+          LOG_LEVEL: "info"
+          SECRET_CACHE_S3: !Sub "${S3BucketForTenantResources}/secret_cache"
+      Handler: handler.handler
+      AutoPublishAlias: active
+      VersionDescription: !Sub "Service Cloud Voice Lambda Version ${Version}"
+      Role: !GetAtt MultiorgInvokeVfsIntegrationApiFunctionRoleResource.Arn
+      Timeout: 8
+      Runtime: nodejs22.x
+      FunctionName: !Sub "${lambdaPrefix}-MultiorgInvokeVfsIntegrationApiFunction"
+      Layers:
+        - !Ref MultiorgInvokeVfsIntegrationApiFunctionLayer
+      Description: Retrieves voicemail recording URLs
+      
   MultiorgHandleContactEventsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -636,7 +690,7 @@ Resources:
         Key: !Sub '${SalesforceRelease}/multiorgHandleContactEvents${Version}'
       Environment:
         Variables:
-          LOG_LEVEL: "info"
+          LOG_LEVEL: "info"          
           INVOKE_TELEPHONY_INTEGRATION_API_ARN: !Ref MultiorgInvokeTelephonyIntegrationApiFunction
           SECRET_CACHE_S3: !Sub "${S3BucketForTenantResources}/secret_cache"
       Handler: handler.handler
@@ -646,7 +700,7 @@ Resources:
       AutoPublishAlias: active
       Layers:
         - !Ref MultiorgHandleContactEventsFunctionLayer
-
+      
 
   MultiorgPostCallAnalysisTriggerFunction:
     Type: AWS::Serverless::Function
@@ -671,7 +725,7 @@ Resources:
   MultiorgPostCallAnalysisTriggerFunctionAsyncConfig:
     Type: AWS::Lambda::EventInvokeConfig
     Properties:
-      FunctionName:
+      FunctionName: 
         Ref: MultiorgPostCallAnalysisTriggerFunction
       MaximumRetryAttempts: 0
       Qualifier: $LATEST
@@ -721,7 +775,7 @@ Resources:
       FunctionName: !Sub '${lambdaPrefix}-MultiorgContactLensProcessorFunction'
       Layers:
         - !Ref MultiorgContactLensProcessorFunctionLayer
-      Description: This Lambda function process the transcripts and sends them to salesforce. This gets invoked by contactlensconsumer lambda function
+      Description: Processes and sends transcripts to Salesforce
 
   MultiorgContactLensConsumerFunction:
     Type: AWS::Serverless::Function
@@ -761,7 +815,7 @@ Resources:
       Runtime: nodejs22.x
       Layers:
         - !Ref MultiorgInvokeSalesforceRestApiFunctionLayer
-      Description: This Lambda function calls the Salesforce REST API. You can place this Lambda function within a contact flow to create, update, or query Salesforce records.
+      Description: Invokes Salesforce REST API from contact flows
 
   MultiorgCTRDataSyncFunction:
     Type: AWS::Serverless::Function
@@ -783,7 +837,7 @@ Resources:
       FunctionName: !Sub "${lambdaPrefix}-MultiorgCTRDataSyncFunction"
       Layers:
         - !Ref MultiorgCTRDataSyncFunctionLayer
-      Description: After the Contract Trace Record (CTR) is created in Amazon, this Lambda function automatically syncs CTR data to the VoiceCall object.
+      Description: Syncs CTR data to VoiceCall records
 
   MultiorgVoiceMailStack:
     Type: AWS::CloudFormation::Stack
@@ -841,6 +895,7 @@ Resources:
     DependsOn:
       - MultiorgInvokeSalesforceRestApiFunction
       - MultiorgInvokeTelephonyIntegrationApiFunction
+      - MultiorgInvokeVfsIntegrationApiFunction
       - MultiorgCTRDataSyncFunction
       - MultiorgContactDataSyncFunction
       - MultiorgKvsConsumerTrigger
@@ -857,6 +912,7 @@ Resources:
         S3BucketForScvResources: !Ref S3BucketForScvResources
         RealtimeAlertRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/SCVRealtimeAlertRole"
         InvokeTelephonyIntegrationApiFunctionName: !Sub "${lambdaPrefix}-MultiorgInvokeTelephonyIntegrationApiFunction"
+        InvokeVfsIntegrationApiFunctionName: !Sub "${lambdaPrefix}-MultiorgInvokeVfsIntegrationApiFunction"
         InvokeSalesforceRestApiFunctionName: !Sub "${lambdaPrefix}-MultiorgInvokeSalesforceRestApiFunction"
         CTRDataSyncFunctionName: !Sub "${lambdaPrefix}-MultiorgCTRDataSyncFunction"
         ContactDataSyncFunctionName: !Sub "${lambdaPrefix}-MultiorgContactDataSync"
@@ -921,13 +977,13 @@ Resources:
                   bucket_name = event['ResourceProperties']['BucketName']
                   ttl_days = int(event['ResourceProperties']['TTLDays'])
                   prefix = event['ResourceProperties'].get('Prefix', 'secret_cache/')
-          
+                  
                   if event['RequestType'] == 'Create' or event['RequestType'] == 'Update':
                       apply_ttl_policy(bucket_name, ttl_days, prefix)
                       logger.info(f"Applied TTL policy to {bucket_name}")
-          
+                  
                   cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-          
+                  
               except Exception as e:
                   logger.error(f"Error: {str(e)}")
                   # For delete operations, always return success to prevent stack deletion issues
@@ -950,13 +1006,13 @@ Resources:
                       raise Exception(f"Bucket {bucket_name} does not exist. Cannot apply TTL policy.")
                   else:
                       raise
-          
+              
               # Remove any existing TTL rule for secret cache
               existing_rules = [rule for rule in existing_rules if not (
                   rule.get('ID') == 'SecretCacheTTL' or 
                   (rule.get('Filter', {}).get('Prefix') == prefix)
               )]
-          
+              
               # Add new TTL rule
               ttl_rule = {
                   'ID': 'SecretCacheTTL',
@@ -964,9 +1020,9 @@ Resources:
                   'Filter': {'Prefix': prefix},
                   'Expiration': {'Days': ttl_days}
               }
-          
+              
               existing_rules.append(ttl_rule)
-          
+              
               # Apply the updated lifecycle configuration
               s3.put_bucket_lifecycle_configuration(
                   Bucket=bucket_name,
@@ -988,12 +1044,19 @@ Resources:
       IntegrationArn: !GetAtt MultiorgInvokeTelephonyIntegrationApiFunction.Arn
       IntegrationType: LAMBDA_FUNCTION
 
+  MultiorgInvokeVfsIntegrationApiIntegrationAssociationResource:
+    Type: AWS::Connect::IntegrationAssociation
+    Properties:
+      InstanceId: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
+      IntegrationArn: !GetAtt MultiorgInvokeVfsIntegrationApiFunction.Arn
+      IntegrationType: LAMBDA_FUNCTION
+
   MultiorgKvsConsumerTriggerIntegrationAssociationResource:
     Type: AWS::Connect::IntegrationAssociation
     Properties:
       InstanceId: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
       IntegrationArn: !GetAtt MultiorgKvsConsumerTrigger.Arn
-      IntegrationType: LAMBDA_FUNCTION
+      IntegrationType: LAMBDA_FUNCTION  
 
   MultiorgInvokeSalesforceRestApiIntegrationAssociationResource:
     Type: AWS::Connect::IntegrationAssociation
@@ -1015,7 +1078,7 @@ Resources:
     Properties:
       FunctionName: !Sub "${lambdaPrefix}-streamDiscovery"
       Handler: index.lambda_handler
-      Runtime: python3.11
+      Runtime: python3.13
       Timeout: 300
       MemorySize: 128
       Role: !GetAtt MultiorgStreamDiscoveryFunctionRoleResource.Arn
@@ -1036,57 +1099,57 @@ Resources:
               try:
                   if event['RequestType'] in ['Create', 'Update']:
                       connect_client = boto3.client('connect')
-          
+                      
                       # Get CTR Stream ARN using CONTACT_TRACE_RECORDS
                       ctr_response = connect_client.list_instance_storage_configs(
                           InstanceId=event['ResourceProperties']['ConnectInstanceId'],
                           ResourceType='CONTACT_TRACE_RECORDS'
                       )
-          
+                      
                       ctr_stream_arn = None
                       if 'StorageConfigs' in ctr_response and ctr_response['StorageConfigs']:
                           for config in ctr_response['StorageConfigs']:
                               if config['StorageType'] == 'KINESIS_STREAM':
                                   ctr_stream_arn = config['KinesisStreamConfig']['StreamArn']
                                   break
-          
+                      
                       # Get Contact Lens Stream ARN using REAL_TIME_CONTACT_ANALYSIS_SEGMENTS
                       contact_lens_response = connect_client.list_instance_storage_configs(
                           InstanceId=event['ResourceProperties']['ConnectInstanceId'],
                           ResourceType='REAL_TIME_CONTACT_ANALYSIS_SEGMENTS'
                       )
-          
+                      
                       contact_lens_stream_arn = None
                       if 'StorageConfigs' in contact_lens_response and contact_lens_response['StorageConfigs']:
                           for config in contact_lens_response['StorageConfigs']:
                               if config['StorageType'] == 'KINESIS_STREAM':
                                   contact_lens_stream_arn = config['KinesisStreamConfig']['StreamArn']
                                   break
-          
+                      
                       # Check for missing stream ARNs and provide specific error messages
                       error_messages = []
-          
+                      
                       if ctr_stream_arn is None:
                           error_messages.append("CTR Stream ARN not found. Please ensure CONTACT_TRACE_RECORDS storage is configured with KINESIS_STREAM type.")
-          
+                      
                       if contact_lens_stream_arn is None:
                           error_messages.append("Contact Lens Stream ARN not found. Please ensure REAL_TIME_CONTACT_ANALYSIS_SEGMENTS storage is configured with KINESIS_STREAM type.")
-          
+                      
                       if error_messages:
                           error_msg = " | ".join(error_messages)
                           print(f"Stream discovery failed: {error_msg}")
                           cfnresponse.send(event, context, cfnresponse.SUCCESS, {'Error': error_msg, 'CTRStreamArn': "", 'ContactLensStreamArn': ""})
                           return
-          
+                      
                       response_data = {
                           'CTRStreamArn': ctr_stream_arn or "",
                           'ContactLensStreamArn': contact_lens_stream_arn or ""
                       }
-          
+                      
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, response_data)
                   else:
                       cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
-          
+                      
               except Exception as e:
                   print(f"Error: {str(e)}")
                   cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
@@ -1116,7 +1179,7 @@ Outputs:
 
   MultiorgContactLensConsumerFunctionArn:
     Description: ARN of the ContactLensConsumer Lambda function
-    Value: !GetAtt MultiorgContactLensConsumerFunction.Arn
+    Value: !GetAtt MultiorgContactLensConsumerFunction.Arn 
 
   MultiorgInvokeSalesforceRestApiFunctionArn:
     Description: ARN of the MultiorgInvokeSalesforceRestApi Lambda function

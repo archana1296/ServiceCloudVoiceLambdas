@@ -33,6 +33,9 @@ Parameters:
   InvokeTelephonyApiLambdaArn:
     Type: String
     Description: Invoke Telephony API Lambda Arn
+  InvokeVfsApiLambdaArn:
+    Type: String
+    Description: Invoke VFS API Lambda Arn
   ContactLensConsumerLambdaArn:
     Type: String
     Description: ContactLensConsumer Lambda Arn
@@ -75,8 +78,8 @@ Resources:
     Properties:
       InstanceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
       Name: "Routing"
-      Values:
-        StringList:
+      Values: 
+        StringList: 
           - "True"
   MyDomainApprovedOriginDisAssociation:
     Type: Custom::MyDomainApprovedOriginDisAssociation
@@ -85,7 +88,7 @@ Resources:
       ResourceType: "DISASSOCIATE_RESOURCES"
       ResourceValue: !Sub "${MyDomainUrl}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the approved origin association
+      Description: Removing the approved origin association 
   LightningDomainApprovedOriginDisAssociation:
     Type: Custom::LightningDomainApprovedOriginDisAssociation
     DependsOn: MyDomainApprovedOriginAssociation
@@ -94,7 +97,7 @@ Resources:
       ResourceType: "DISASSOCIATE_RESOURCES"
       ResourceValue: !Sub "${LightningDomainUrl}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the approved origin association
+      Description: Removing the approved origin association 
   MyDomainApprovedOriginAssociation:
     Type: AWS::Connect::ApprovedOrigin
     DependsOn: MyDomainApprovedOriginDisAssociation
@@ -114,7 +117,7 @@ Resources:
       ResourceType: "DISASSOCIATE_LAMBDA"
       ResourceValue: !Sub "${InvokeTelephonyApiLambdaArn}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the lambda association
+      Description: Removing the lambda association 
   KvsConsumerTriggerDisAssociationResource:
     Type: Custom::KvsConsumerTriggerDisAssociationResource
     DependsOn: InvokeTelephonyLambdaAssociationResource
@@ -123,7 +126,7 @@ Resources:
       ResourceType: "DISASSOCIATE_LAMBDA"
       ResourceValue: !Sub "${KvsConsumerTriggerLambdaArn}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the lambda association
+      Description: Removing the lambda association 
   InvokeSfRestApiDisAssociationResource:
     Type: Custom::InvokeSfRestApiDisAssociationResource
     DependsOn: KvsConsumerTriggerAssociationResource
@@ -132,7 +135,7 @@ Resources:
       ResourceType: "DISASSOCIATE_LAMBDA"
       ResourceValue: !Sub "${InvokeSfRestApiLambdaArn}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the lambda association
+      Description: Removing the lambda association 
   ContactLensConsumerDisAssociationResource:
     Type: Custom::ContactLensConsumerDisAssociationResource
     DependsOn: InvokeSfRestApiAssociationResource
@@ -141,7 +144,7 @@ Resources:
       ResourceType: "DISASSOCIATE_LAMBDA"
       ResourceValue: !Sub "${ContactLensConsumerLambdaArn}"
       ServiceToken: !GetAtt ConnectConfiguration.Arn
-      Description: Removing the lambda association
+      Description: Removing the lambda association 
   CallRecordingStorage:
     Type: Custom::CallRecordingStorage
     Properties:
@@ -198,6 +201,13 @@ Resources:
       InstanceId: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
       IntegrationArn: !Sub "${InvokeTelephonyApiLambdaArn}:active"
       IntegrationType: "LAMBDA_FUNCTION"
+  InvokeVfsLambdaAssociationResource:
+    Type: AWS::Connect::IntegrationAssociation
+    DependsOn: InvokeTelephonyLambdaAssociationResource
+    Properties:
+      InstanceId: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
+      IntegrationArn: !Sub "${InvokeVfsApiLambdaArn}:active"
+      IntegrationType: "LAMBDA_FUNCTION"
   KvsConsumerTriggerAssociationResource:
     Type: AWS::Connect::IntegrationAssociation
     DependsOn: KvsConsumerTriggerDisAssociationResource
@@ -219,7 +229,7 @@ Resources:
       InstanceId: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
       IntegrationArn: !Sub "${ContactLensConsumerLambdaArn}:active"
       IntegrationType: "LAMBDA_FUNCTION"
-
+    
   MultiPartyConferenceConfig:
     Type: Custom::MultiPartyConferenceConfig
     Properties:

@@ -101,6 +101,9 @@ Outputs:
   InvokeTelephonyIntegrationApiFunction:
     Description: InvokeTelephonyIntegrationApi Lambda Function ARN
     Value: !GetAtt InvokeTelephonyIntegrationApiFunction.Arn
+  InvokeVfsIntegrationApiFunction:
+    Description: InvokeVfsIntegrationApi Lambda Function ARN
+    Value: !GetAtt InvokeVfsIntegrationApiFunction.Arn
   kvsTranscriber:
     Description: kvsTranscriber Lambda Function ARN
     Value: !GetAtt kvsTranscriber.Arn
@@ -112,7 +115,7 @@ Outputs:
     Value: !GetAtt AuthKeysSSMUtilFunction.Arn
   HandleContactEventsFunction:
     Description: HandleContactEventsFunction Lambda Function ARN
-    Value: !GetAtt HandleContactEventsFunction.Arn
+    Value: !GetAtt HandleContactEventsFunction.Arn  
   CTRStreamARN:
     Description: CTR Kinesis Stream ARN
     Value: !GetAtt CTRStream.Arn
@@ -142,7 +145,7 @@ Outputs:
     Value: !GetAtt SCVTenantBucketWriteAccessRoleResource.Arn
   ContactLensConsumerFunction:
     Description: ContactLensConsumer Lambda Function ARN
-    Value: !GetAtt ContactLensConsumerFunction.Arn
+    Value: !GetAtt ContactLensConsumerFunction.Arn      
   ContactLensStream:
     Description: Contact Lens Transcription Kinesis Stream ARN
     Value: !GetAtt ContactLensStream.Arn
@@ -156,7 +159,7 @@ Outputs:
 Conditions:
   UseProdCondition:
     !Equals [!Ref EnvironmentType, PRODUCTION]
-  PermissionBoundaryIsNull:
+  PermissionBoundaryIsNull: 
     !Equals [!Ref PermissionBoundaryARN, '']
   UseSourceCondition: !Or
     - !Equals [ !Ref InstanceType, "SOURCE" ]
@@ -217,6 +220,16 @@ Resources:
         S3Key: !Sub '${SalesforceRelease}/invokeTelephonyIntegrationApiFunctionLayer${Version}'
       Description: InvokeTelephonyIntegrationApiFunction node modules
       LayerName: InvokeTelephonyIntegrationApiFunctionLayer
+  InvokeVfsIntegrationApiFunctionLayer:
+    Type: 'AWS::Lambda::LayerVersion'
+    Properties:
+      CompatibleRuntimes:
+        - nodejs22.x
+      Content:
+        S3Bucket: !Sub '${S3BucketForScvResources}-${AWS::Region}'
+        S3Key: !Sub '${SalesforceRelease}/invokeVfsIntegrationApiFunctionLayer${Version}'
+      Description: InvokeVfsIntegrationApiFunction node modules
+      LayerName: InvokeVfsIntegrationApiFunctionLayer
   KVSConsumerTriggerFunctionLayer:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
@@ -287,7 +300,7 @@ Resources:
             Resource:
               - !Sub 'arn:${AWS::Partition}:s3:::${S3BucketForTenantResources}-${AWS::AccountId}'
           -
-            Sid: TranscriptionPolicy
+            Sid: TranscriptionPolicy 
             Action:
               - s3:*
             Effect: Allow
@@ -334,7 +347,7 @@ Resources:
       FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-CTRDataSyncFunction", !Sub "${LambdaPrefix}-CTRDataSyncFunction"]
       Layers:
         - Ref: CTRDataSyncFunctionLayer
-      Description: After the Contract Trace Record (CTR) is created in Amazon, this Lambda function automatically syncs CTR data to the VoiceCall object.
+      Description: Syncs CTR data to VoiceCall records
   InvokeTelephonyIntegrationApiFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -354,7 +367,27 @@ Resources:
       FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-InvokeTelephonyIntegrationApiFunction", !Sub "${LambdaPrefix}-InvokeTelephonyIntegrationApiFunction"]
       Layers:
         - Ref: InvokeTelephonyIntegrationApiFunctionLayer
-      Description: This Lambda function either puts the VoiceCall records or executes the omni channel flow and returns the agent or queue routing instruction to contact flow
+      Description: Creates VoiceCall records and handles OmniChannel routing
+  InvokeVfsIntegrationApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri:
+        Bucket: !Sub "${S3BucketForScvResources}-${AWS::Region}"
+        Key: !Sub "${SalesforceRelease}/invokeVfsIntegrationApi${Version}"
+      Environment:
+        Variables:
+          LOG_LEVEL: "info"
+          SECRET_NAME: !Sub "${CallCenterApiName}-salesforce-secret"
+      Handler: handler.handler
+      AutoPublishAlias: active
+      VersionDescription: !Sub "Service Cloud Voice Lambda Version ${Version}"
+      Role: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/SCVInvokeVfsIntegrationApiFunctionRole"
+      Timeout: 8
+      Runtime: nodejs22.x
+      FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-InvokeVfsIntegrationApiFunction", !Sub "${LambdaPrefix}-InvokeVfsIntegrationApiFunction"]
+      Layers:
+        - Ref: InvokeVfsIntegrationApiFunctionLayer
+      Description: Retrieves voicemail recording URLs
   InvokeSalesforceRestApiFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -375,7 +408,7 @@ Resources:
       FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-InvokeSalesforceRestApiFunction", !Sub "${LambdaPrefix}-InvokeSalesforceRestApiFunction"]
       Layers:
         - Ref: InvokeSalesforceRestApiFunctionLayer
-      Description: This Lambda function calls the Salesforce REST API. You can place this Lambda function within a contact flow to create, update, or query Salesforce records.
+      Description: Invokes Salesforce REST API from contact flows
   kvsTranscriber:
     # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Type: AWS::Serverless::Function
@@ -396,7 +429,7 @@ Resources:
           APP_REGION: !Ref "AWS::Region"
           START_SELECTOR_TYPE: "NOW"
       FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-kvsTranscriber", !Sub "${LambdaPrefix}-kvsTranscriber"]
-      Description: This Lambda function does the actual real-time transcription work. This function is not directly invoked from a contact flow.
+      Description: Performs real-time transcription
   kvsConsumerTrigger:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -418,7 +451,7 @@ Resources:
       FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-kvsConsumerTrigger", !Sub "${LambdaPrefix}-kvsConsumerTrigger"]
       Layers:
         - Ref: KVSConsumerTriggerFunctionLayer
-      Description: This Lambda function is the initiation point for starting real-time transcription.
+      Description: Initiates real-time transcription
   AuthKeysSSMUtilFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -438,7 +471,7 @@ Resources:
       FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-AuthKeysSSMUtilFunction", !Sub "${LambdaPrefix}-AuthKeysSSMUtilFunction"]
       Layers:
         - Ref: AuthKeysSSMUtilFunctionLayer
-      Description: It Creates the Private key in Param store and returns Public SSM key pair which is used for generating the JWT token for invokeTelephonyIntegrationApiFunction Lambda for authenticating to SCRT service.
+      Description: Manages JWT auth keys in Parameter Store
   HandleContactEventsFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -458,8 +491,8 @@ Resources:
           INVOKE_TELEPHONY_INTEGRATION_API_ARN: !Ref InvokeTelephonyIntegrationApiFunction.Alias
           SECRET_NAME: !Sub "${CallCenterApiName}-salesforce-secret"
       Layers:
-        - Ref: HandleContactEventsFunctionLayer
-      Description: This Lambda function handles the disconnect event for a missed or abandoned call and ensures that the PendingServiceRouting (PSR) record is cleaned up in Salesforce.
+        - Ref: HandleContactEventsFunctionLayer   
+      Description: Handles disconnect events and cleans up PSR records
   ContactDataSyncFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -486,10 +519,10 @@ Resources:
       FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-ContactDataSyncFunction", !Sub "${LambdaPrefix}-ContactDataSyncFunction"]
       Layers:
         - Ref: ContactDataSyncFunctionLayer
-      Description: This lambda function that adds transcripts from Contact lens in case of failure.
-
+      Description: Backfills Contact Lens transcripts
+  
   # Lambda Permissions, to allow Amazon Connect to invoke it
-  InvokeTelephonyIntegrationApiFunctionPermission:
+  InvokeTelephonyIntegrationApiFunctionPermission:  
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref InvokeTelephonyIntegrationApiFunction.Alias
@@ -498,7 +531,16 @@ Resources:
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
 
-  InvokeSalesforceRestApiFunctionPermission:
+  InvokeVfsIntegrationApiFunctionPermission:  
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref InvokeVfsIntegrationApiFunction.Alias
+      Action: lambda:InvokeFunction
+      Principal: connect.amazonaws.com
+      SourceAccount: !Sub ${AWS::AccountId}
+      SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
+
+  InvokeSalesforceRestApiFunctionPermission:  
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref InvokeSalesforceRestApiFunction.Alias
@@ -506,8 +548,8 @@ Resources:
       Principal: connect.amazonaws.com
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
-
-  KvsTranscriberPermission:
+  
+  KvsTranscriberPermission:  
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref kvsTranscriber.Alias
@@ -515,8 +557,8 @@ Resources:
       Principal: connect.amazonaws.com
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
-
-  CTRDataSyncFunctionPermission:
+  
+  CTRDataSyncFunctionPermission:  
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref CTRDataSyncFunction.Alias
@@ -524,8 +566,8 @@ Resources:
       Principal: connect.amazonaws.com
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
-
-  KvsConsumerTriggerPermission:
+  
+  KvsConsumerTriggerPermission:  
     Type: AWS::Lambda::Permission
     Properties:
       FunctionName: !Ref kvsConsumerTrigger.Alias
@@ -533,7 +575,7 @@ Resources:
       Principal: connect.amazonaws.com
       SourceAccount: !Sub ${AWS::AccountId}
       SourceArn: !Sub "arn:${AWS::Partition}:connect:${AWS::Region}:${AWS::AccountId}:instance/${ConnectInstanceId}"
-
+  
   AuthKeysSSMUtilFunctionPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -772,7 +814,7 @@ Resources:
               else:
                 cfnresponse.send(event, context, FAILED, responseData, ssm_arn)
       FunctionName: !If [LambdaPrefixIsNull, !Sub "${CallCenterApiName}-CustomSSMFunction", !Sub "${LambdaPrefix}-CustomSSMFunction"]
-      Description: This Lambda function adds the salesforce rest api token and salesforce consumer key in param stores, which is used for making any rest api calls to salesforce database
+      Description: Stores Salesforce API credentials in SSM
   ConnectSSORoleResource:
     Condition: UseSourceCondition
     Type: AWS::IAM::Role
@@ -884,7 +926,7 @@ Resources:
   SCVS3RoleResource:
     Condition: UseSourceCondition
     Type: "AWS::IAM::Role"
-    DependsOn:
+    DependsOn: 
       - S3Bucket
     Properties:
       PermissionsBoundary:
@@ -925,7 +967,7 @@ Resources:
 
   EventRulesStack:
     Type: AWS::CloudFormation::Stack
-    DependsOn:
+    DependsOn: 
       - HandleContactEventsFunction
       - InvokeTelephonyIntegrationApiFunction
     DeletionPolicy: Delete
@@ -942,6 +984,7 @@ Resources:
     DependsOn:
       - HandleContactEventsFunction
       - InvokeTelephonyIntegrationApiFunction
+      - InvokeVfsIntegrationApiFunction
       - ContactLensConsumerFunction
       - kvsConsumerTrigger
       - CTRDataSyncFunction
@@ -958,6 +1001,7 @@ Resources:
         S3BucketForScvResources: !Sub "${S3BucketForScvResources}"
         RealtimeAlertRole: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/SCVRealtimeAlertRole"
         InvokeTelephonyIntegrationApiFunctionName: !Ref InvokeTelephonyIntegrationApiFunction
+        InvokeVfsIntegrationApiFunctionName: !Ref InvokeVfsIntegrationApiFunction
         InvokeSalesforceRestApiFunctionName: !Ref InvokeSalesforceRestApiFunction
         CTRDataSyncFunctionName: !Ref CTRDataSyncFunction
         ContactDataSyncFunctionName: !Ref ContactDataSyncFunction
@@ -1004,6 +1048,7 @@ Resources:
       - S3Bucket
       - LiveMediaStreamKmsKey
       - InvokeTelephonyIntegrationApiFunction
+      - InvokeVfsIntegrationApiFunction
       - ContactLensConsumerFunction
       - kvsConsumerTrigger
       - InvokeSalesforceRestApiFunction
@@ -1020,6 +1065,7 @@ Resources:
         ConnectConfiguratorLambdaRole: "SCVConnectConfiguratorLambdaRole"
         KinesisStreamArnForCTR: !GetAtt CTRStream.Arn
         InvokeTelephonyApiLambdaArn: !GetAtt InvokeTelephonyIntegrationApiFunction.Arn
+        InvokeVfsApiLambdaArn: !GetAtt InvokeVfsIntegrationApiFunction.Arn
         ContactLensConsumerLambdaArn: !GetAtt ContactLensConsumerFunction.Arn
         KvsConsumerTriggerLambdaArn: !GetAtt kvsConsumerTrigger.Arn
         KinesisStreamArnForContactLens: !GetAtt ContactLensStream.Arn
@@ -1076,11 +1122,11 @@ Resources:
       Layers:
         - Ref: PostCallAnalysisTriggerFunctionLayer
       Description: This lambda function gets invoked when the call is done. 
-  
+      
   PostCallAnalysisTriggerFunctionAsyncConfig:
     Type: AWS::Lambda::EventInvokeConfig
     Properties:
-      FunctionName:
+      FunctionName: 
         Ref: PostCallAnalysisTriggerFunction
       MaximumRetryAttempts: 0
       Qualifier: $LATEST
@@ -1090,7 +1136,7 @@ Resources:
     Properties:
       ShardCount: 1
       Name: !Sub '${CallCenterApiName}-${AWS::AccountId}-ContactLensStream'
-
+  
   ContactLensProcessorFunctionLayer:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
@@ -1124,7 +1170,7 @@ Resources:
       Layers:
         - Ref: ContactLensProcessorFunctionLayer
       Description: This Lambda function process the transcripts and sends them to salesforce. This gets invoked by contactlensconsumer lambda function
-
+  
   ContactLensConsumerFunctionLayer:
     Type: 'AWS::Lambda::LayerVersion'
     Properties:
