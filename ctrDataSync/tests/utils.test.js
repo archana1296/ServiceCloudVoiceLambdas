@@ -119,7 +119,7 @@ describe('transformCTR', () => {
     it('should default to UNKNOWN reason for disconnect if null', () => {
         expect(actual4).toStrictEqual(expected4);
     });
-
+      
     it('should set disconnectReason to CALLBACK and isError to false when callback_flag is set', () => {
         const input = {
             ContactId: "cb-flag-test-1",
@@ -228,6 +228,87 @@ describe('transformCTR', () => {
         };
         expect(utils.transformCTR(input)).toStrictEqual(expected);
     });
+
+    describe('recordingLocation tests', () => {
+        const baseCtr = {
+            ContactId: "rec-test-1",
+            InitiationTimestamp: "2023-01-01T00:00:00Z",
+            DisconnectTimestamp: "2023-01-01T00:05:00Z",
+            DisconnectReason: "AGENT_HUNGUP",
+            InitiationMethod: "INBOUND"
+        };
+
+        it('should set recordingLocation when Agent, AgentInteractionDuration > 0, and Recording.Location exist', () => {
+            const input = {
+                ...baseCtr,
+                Agent: {
+                    ConnectedToAgentTimestamp: "2023-01-01T00:00:30Z",
+                    AgentInteractionDuration: 5
+                },
+                Recording: { Location: "s3://bucket/recording.wav" }
+            };
+            const result = utils.transformCTR(input);
+            expect(result.fields.recordingLocation).toBe("s3://bucket/recording.wav");
+        });
+
+        it('should not set recordingLocation when AgentInteractionDuration is 0', () => {
+            const input = {
+                ...baseCtr,
+                Agent: {
+                    ConnectedToAgentTimestamp: "2023-01-01T00:00:30Z",
+                    AgentInteractionDuration: 0
+                },
+                Recording: { Location: "s3://bucket/recording.wav" }
+            };
+            const result = utils.transformCTR(input);
+            expect(result.fields.recordingLocation).toBeUndefined();
+        });
+
+        it('should not set recordingLocation when Agent is missing', () => {
+            const input = {
+                ...baseCtr,
+                Recording: { Location: "s3://bucket/recording.wav" }
+            };
+            const result = utils.transformCTR(input);
+            expect(result.fields.recordingLocation).toBeUndefined();
+        });
+
+        it('should not set recordingLocation when Recording is missing', () => {
+            const input = {
+                ...baseCtr,
+                Agent: {
+                    ConnectedToAgentTimestamp: "2023-01-01T00:00:30Z",
+                    AgentInteractionDuration: 5
+                }
+            };
+            const result = utils.transformCTR(input);
+            expect(result.fields.recordingLocation).toBeUndefined();
+        });
+
+        it('should not set recordingLocation when Recording.Location is empty or missing', () => {
+            const inputWithEmpty = {
+                ...baseCtr,
+                Agent: {
+                    ConnectedToAgentTimestamp: "2023-01-01T00:00:30Z",
+                    AgentInteractionDuration: 5
+                },
+                Recording: { Location: "" }
+            };
+            const resultEmpty = utils.transformCTR(inputWithEmpty);
+            expect(resultEmpty.fields.recordingLocation).toBeUndefined();
+
+            const inputWithoutLocation = {
+                ...baseCtr,
+                Agent: {
+                    ConnectedToAgentTimestamp: "2023-01-01T00:00:30Z",
+                    AgentInteractionDuration: 5
+                },
+                Recording: {}
+            };
+            const resultNoLocation = utils.transformCTR(inputWithoutLocation);
+            expect(resultNoLocation.fields.recordingLocation).toBeUndefined();
+        });
+    });
 });
 
 describe('getCallAttributes', () => {
@@ -256,7 +337,7 @@ describe('getCallAttributes', () => {
         "sfc-field4":"field4",
         "field5":"field5"
     };
-
+    
     let expected3 = {};
     it('call attributes should be empty as none of the attributes start with sfdc-', () => {
         expect(utils.getCallAttributes(input3)).toStrictEqual(expected3);

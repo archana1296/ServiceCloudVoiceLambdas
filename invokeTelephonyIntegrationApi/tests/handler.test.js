@@ -461,6 +461,7 @@ describe("handler.js", () => {
             Parameters: {
               methodName: "callbackExecution",
               customerCallbackNumber: "123-456-7890",
+              scheduledRoutingDateTime: "2026-02-02T10:00:00Z",
             },
             ContactData: {
               ContactId: "test-contact-id",
@@ -471,6 +472,7 @@ describe("handler.js", () => {
         const result = await handler.handler(event);
         expect(api.callbackExecution).toHaveBeenCalledWith("test-contact-id", {
           callbackNumber: "123-456-7890",
+          scheduledRoutingDateTime: "2026-02-02T10:00:00Z",
         }, mockSecretConfig);
         expect(result).toEqual({ callbackId: "callback-id" });
       });
